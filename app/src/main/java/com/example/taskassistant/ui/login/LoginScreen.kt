@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.taskassistant.ui.theme.TaskAssistantTheme
+import androidx.compose.material.icons.outlined.ArrowForward
 
 
 @Composable
@@ -87,6 +88,11 @@ fun LoginScreen(modifier: Modifier = Modifier) {
             onClick = { /* TODO */ },
             modifier = Modifier.fillMaxWidth()
         ) {
+            Icon(
+                imageVector = Icons.Outlined.ArrowForward,
+                contentDescription = "Sign In"
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Sign In")
         }
 
