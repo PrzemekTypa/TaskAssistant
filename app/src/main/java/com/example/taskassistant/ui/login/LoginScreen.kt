@@ -1,43 +1,37 @@
 package com.example.taskassistant.ui.login
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import android.widget.Toast
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.TaskAlt
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.taskassistant.ui.theme.TaskAssistantTheme
-import androidx.compose.material.icons.outlined.ArrowForward
-
 
 @Composable
-fun LoginScreen(modifier: Modifier = Modifier) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+fun LoginScreen(
+    modifier: Modifier = Modifier,
+    viewModel: LoginViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(uiState.isLoginSuccessful) {
+        if (uiState.isLoginSuccessful) {
+            Toast.makeText(context, "Zalogowano pomyślnie", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -49,7 +43,7 @@ fun LoginScreen(modifier: Modifier = Modifier) {
 
         Icon(
             imageVector = Icons.Outlined.TaskAlt,
-            contentDescription = "App Icon",
+            contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary
         )
@@ -63,44 +57,64 @@ fun LoginScreen(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
+            value = uiState.email,
+            onValueChange = { viewModel.onEmailChange(it) },
             label = { Text("Email") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = uiState.error != null
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
+            value = uiState.password,
+            onValueChange = { viewModel.onPasswordChange(it) },
+            label = { Text("Hasło") },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = uiState.error != null
         )
+
+        if (uiState.error != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = uiState.error!!,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { /* TODO */ },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { viewModel.login() },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isLoading
         ) {
-            Icon(
-                imageVector = Icons.Outlined.ArrowForward,
-                contentDescription = "Sign In"
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Sign In")
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.ArrowForward,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Zaloguj się")
+            }
         }
 
         TextButton(
-            onClick = { /* TODO */ },
+            onClick = { },
             modifier = Modifier.align(Alignment.End)
         ) {
-            Text("Forgot password?")
+            Text("Zapomniałeś hasła?")
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -108,20 +122,18 @@ fun LoginScreen(modifier: Modifier = Modifier) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("No account?")
+            Text("Nie masz konta?")
             Spacer(modifier = Modifier.width(4.dp))
-            TextButton(onClick = { /* TODO */ }) {
+            TextButton(onClick = { }) {
                 Text("Zarejestruj się")
             }
         }
     }
 }
 
-
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
     TaskAssistantTheme {
-        LoginScreen()
     }
 }
