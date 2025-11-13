@@ -22,14 +22,21 @@ import com.example.taskassistant.ui.theme.TaskAssistantTheme
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
-    viewModel: LoginViewModel = viewModel()
+    viewModel: LoginViewModel = viewModel(),
+    onLoginSuccess: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
     LaunchedEffect(uiState.isLoginSuccessful) {
         if (uiState.isLoginSuccessful) {
-            Toast.makeText(context, "Zalogowano pomyślnie", Toast.LENGTH_SHORT).show()
+            if (uiState.userRole == "parent") {
+                viewModel.onLoginSuccessHandled()
+                onLoginSuccess()
+            } else {
+                Toast.makeText(context, "Zalogowano jako dziecko (W budowie)", Toast.LENGTH_SHORT).show()
+                viewModel.onLoginSuccessHandled()
+            }
         }
     }
 

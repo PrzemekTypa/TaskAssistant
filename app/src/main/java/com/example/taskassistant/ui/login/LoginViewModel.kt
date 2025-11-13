@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.google.firebase.firestore.FirebaseFirestore
 
 
 data class LoginUiState(
@@ -15,7 +16,8 @@ data class LoginUiState(
     val password: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isLoginSuccessful: Boolean = false
+    val isLoginSuccessful: Boolean = false,
+    val userRole: String? = null
 )
 
 
@@ -25,7 +27,7 @@ class LoginViewModel : ViewModel() {
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     fun onEmailChange(newValue: String) {
         _uiState.update { it.copy(email = newValue, error = null) }
@@ -51,7 +53,12 @@ class LoginViewModel : ViewModel() {
             auth.signInWithEmailAndPassword(currentState.email, currentState.password)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        _uiState.update { it.copy(isLoading = false, isLoginSuccessful = true) }
+                        val userId = auth.currentUser?.uid
+                        if (userId != null) {
+                            fetchUserRole(userId)
+                        } else {
+                            _uiState.update { it.copy(isLoading = false, error = "Błąd pobierania ID użytkownika") }
+                        }
                     } else {
                         _uiState.update {
                             it.copy(
@@ -62,5 +69,28 @@ class LoginViewModel : ViewModel() {
                     }
                 }
         }
+    }
+    private fun fetchUserRole(userId: String) {
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val role = document.getString("role")
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isLoginSuccessful = true,
+                            userRole = role
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = "Brak profilu użytkownika w bazie") }
+                }
+            }
+            .addOnFailureListener { exception ->
+                _uiState.update { it.copy(isLoading = false, error = "Błąd bazy: ${exception.message}") }
+            }
+    }
+    fun onLoginSuccessHandled() {
+        _uiState.update { it.copy(isLoginSuccessful = false) }
     }
 }
