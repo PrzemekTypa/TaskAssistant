@@ -23,19 +23,21 @@ import com.example.taskassistant.ui.theme.TaskAssistantTheme
 fun LoginScreen(
     modifier: Modifier = Modifier,
     viewModel: LoginViewModel = viewModel(),
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onNavigateToRegister: () -> Unit,
+    onNavigateToChildDashboard: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
     LaunchedEffect(uiState.isLoginSuccessful) {
         if (uiState.isLoginSuccessful) {
+            viewModel.onLoginSuccessHandled()
+
             if (uiState.userRole == "parent") {
-                viewModel.onLoginSuccessHandled()
                 onLoginSuccess()
             } else {
-                Toast.makeText(context, "Zalogowano jako dziecko (W budowie)", Toast.LENGTH_SHORT).show()
-                viewModel.onLoginSuccessHandled()
+                onNavigateToChildDashboard()
             }
         }
     }
@@ -131,7 +133,7 @@ fun LoginScreen(
         ) {
             Text("Nie masz konta?")
             Spacer(modifier = Modifier.width(4.dp))
-            TextButton(onClick = { }) {
+            TextButton(onClick = onNavigateToRegister) {
                 Text("Zarejestruj się")
             }
         }

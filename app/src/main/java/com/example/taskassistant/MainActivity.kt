@@ -10,6 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.taskassistant.ui.login.LoginScreen
 import com.example.taskassistant.ui.dashboard.AdminDashboardScreen
+import com.example.taskassistant.ui.dashboard.ChildDashboardScreen
+import com.example.taskassistant.ui.register.RegisterScreen
 import com.example.taskassistant.ui.theme.TaskAssistantTheme
 import com.google.firebase.auth.FirebaseAuth
 
@@ -20,7 +22,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             TaskAssistantTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-
                     var currentScreen by remember { mutableStateOf("login") }
 
                     when (currentScreen) {
@@ -28,11 +29,36 @@ class MainActivity : ComponentActivity() {
                             LoginScreen(
                                 onLoginSuccess = {
                                     currentScreen = "admin_dashboard"
+                                },
+                                onNavigateToRegister = {
+                                    currentScreen = "register"
+                                },
+                                onNavigateToChildDashboard = {
+                                    currentScreen = "child_dashboard"
+                                }
+
+                            )
+                        }
+                        "register" -> {
+                            RegisterScreen(
+                                onRegisterSuccess = {
+                                    currentScreen = "login"
+                                },
+                                onBackToLogin = {
+                                    currentScreen = "login"
                                 }
                             )
                         }
                         "admin_dashboard" -> {
                             AdminDashboardScreen(
+                                onLogout = {
+                                    FirebaseAuth.getInstance().signOut()
+                                    currentScreen = "login"
+                                }
+                            )
+                        }
+                        "child_dashboard" -> {
+                            ChildDashboardScreen(
                                 onLogout = {
                                     FirebaseAuth.getInstance().signOut()
                                     currentScreen = "login"
