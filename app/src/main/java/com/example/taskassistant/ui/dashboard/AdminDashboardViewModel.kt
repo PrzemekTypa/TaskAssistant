@@ -72,6 +72,26 @@ class AdminDashboardViewModel : ViewModel() {
             }
     }
 
+    fun removeChild(childId: String) {
+        _uiState.update { it.copy(isLoading = true) }
+
+
+        db.collection("users").document(childId)
+            .update("parentId", null)
+            .addOnSuccessListener {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        successMessage = "Usunięto dziecko z listy"
+                    )
+                }
+                fetchKids()
+            }
+            .addOnFailureListener { e ->
+                _uiState.update { it.copy(isLoading = false, error = "Błąd usuwania: ${e.message}") }
+            }
+    }
+
     private fun linkChildToParent(childId: String) {
         if (currentUserId == null) return
 

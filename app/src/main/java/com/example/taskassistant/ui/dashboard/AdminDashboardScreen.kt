@@ -25,6 +25,8 @@ import android.widget.Toast
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.filled.Delete
+
 
 data class TaskItem(val title: String, val status: String, val color: Color)
 
@@ -105,7 +107,7 @@ fun KidsTab(viewModel: AdminDashboardViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // Obsługa komunikatów (Dymki sukcesu lub błędu)
+
     LaunchedEffect(uiState.error, uiState.successMessage) {
         uiState.error?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -124,7 +126,7 @@ fun KidsTab(viewModel: AdminDashboardViewModel) {
         Text("Twoje Dzieci", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Karta dodawania dziecka
+
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Dodaj nowe dziecko", style = MaterialTheme.typography.titleMedium)
@@ -155,7 +157,7 @@ fun KidsTab(viewModel: AdminDashboardViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Lista dodanych dzieci
+
         if (uiState.kidsList.isEmpty()) {
             Text("Brak połączonych kont", color = Color.Gray)
         } else {
@@ -169,12 +171,27 @@ fun KidsTab(viewModel: AdminDashboardViewModel) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(Icons.Default.Face, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(kid.email, style = MaterialTheme.typography.bodyLarge)
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Face, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(kid.email, style = MaterialTheme.typography.bodyLarge)
+                            }
+
+
+                            IconButton(onClick = { viewModel.removeChild(kid.id) }) {
+                                Icon(
+                                    androidx.compose.material.icons.Icons.Default.Delete,
+                                    contentDescription = "Usuń",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }
