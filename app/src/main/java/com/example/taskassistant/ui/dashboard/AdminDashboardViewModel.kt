@@ -12,8 +12,18 @@ import kotlinx.coroutines.launch
 
 data class KidItem(val id: String, val email: String)
 
+data class Task(
+    val id: String = "",
+    val title: String = "",
+    val points: Int = 0,
+    val status: String = "todo", // todo, pending, approved
+    val assignedToId: String = "",
+    val assignedToEmail: String = ""
+)
+
 data class AdminUiState(
     val kidsList: List<KidItem> = emptyList(),
+    val tasksList: List<Task> = emptyList(),
     val addChildEmail: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -31,6 +41,7 @@ class AdminDashboardViewModel : ViewModel() {
 
     init {
         fetchKids()
+        fetchTasks()
     }
 
     fun onEmailChange(newEmail: String) {
@@ -130,4 +141,49 @@ class AdminDashboardViewModel : ViewModel() {
                 _uiState.update { it.copy(kidsList = kids) }
             }
     }
+    fun addTask(title: String, points: Int, assignedChildId: String, assignedChildEmail: String) {
+        if (currentUserId == null) return
+
+        val newTask = hashMapOf(
+            "title" to title,
+            "points" to points,
+            "status" to "todo",
+            "parentId" to currentUserId,
+            "assignedToId" to assignedChildId,
+            "assignedToEmail" to assignedChildEmail,
+            "createdAt" to System.currentTimeMillis()
+        )
+
+        db.collection("tasks").add(newTask)
+            .addOnSuccessListener {
+                _uiState.update { it.copy(successMessage = "Zadanie dodane!") }
+            }
+            .addOnFailureListener { e ->
+                _uiState.update { it.copy(error = "Błąd dodawania: ${e.message}") }
+            }
+    }
+
+    private fun fetchTasks() {
+        if (currentUserId == null) return
+
+        db.collection("tasks")
+            .whereEqualTo("parentId", currentUserId)
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val tasks = value?.documents?.map { doc ->
+                    Task(
+                        id = doc.id,
+                        title = doc.getString("title") ?: "",
+                        points = doc.getLong("points")?.toInt() ?: 0,
+                        status = doc.getString("status") ?: "todo",
+                        assignedToId = doc.getString("assignedToId") ?: "",
+                        assignedToEmail = doc.getString("assignedToEmail") ?: ""
+                    )
+                } ?: emptyList()
+
+                _uiState.update { it.copy(tasksList = tasks) }
+            }
+    }
+
 }

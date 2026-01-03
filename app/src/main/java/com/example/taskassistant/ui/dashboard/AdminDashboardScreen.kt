@@ -26,9 +26,11 @@ import androidx.compose.material.icons.filled.Face
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
-
-data class TaskItem(val title: String, val status: String, val color: Color)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +39,22 @@ fun AdminDashboardScreen(
     viewModel: AdminDashboardViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showAddTaskDialog by remember { mutableStateOf(false) }
     val tabs = listOf("Zadania", "Dzieci", "Nagrody", "Ustawienia")
+
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(uiState.error, uiState.successMessage) {
+        uiState.error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.onMessageShown()
+        }
+        uiState.successMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.onMessageShown()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -63,41 +80,48 @@ fun AdminDashboardScreen(
                     )
                 }
             }
+        },
+        floatingActionButton = {
+            if (selectedTab == 0) {
+                FloatingActionButton(onClick = { showAddTaskDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                }
+            }
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
-                0 -> TasksTab()
+                0 -> TasksTab(viewModel)
                 1 -> KidsTab(viewModel)
                 2 -> RewardsTab()
                 3 -> SettingsTab(onLogout = onLogout)
             }
         }
+        if (showAddTaskDialog) {
+            AddTaskDialog(
+                viewModel = viewModel,
+                onDismiss = { showAddTaskDialog = false }
+            )
+        }
     }
 }
 
 @Composable
-fun TasksTab() {
-    val tasks = listOf(
-        TaskItem("Wyrzuć śmieci", "Oczekuje", Color(0xFFFFB74D)),
-        TaskItem("Posprzątaj pokój", "Zatwierdzone", Color(0xFF81C784)),
-        TaskItem("Odrób lekcje", "Oczekuje", Color(0xFFFFB74D))
-    )
+fun TasksTab(viewModel: AdminDashboardViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item {
-            Text(
-                text = "Zadania do akceptacji",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+    if (uiState.tasksList.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Brak zadań. Kliknij + aby dodać.", color = Color.Gray)
         }
-        items(tasks) { task ->
-            TaskCard(task)
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(uiState.tasksList) { task ->
+                TaskCard(task)
+            }
         }
     }
 }
@@ -105,20 +129,6 @@ fun TasksTab() {
 @Composable
 fun KidsTab(viewModel: AdminDashboardViewModel) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
-
-
-    LaunchedEffect(uiState.error, uiState.successMessage) {
-        uiState.error?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-            viewModel.onMessageShown()
-        }
-        uiState.successMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-            viewModel.onMessageShown()
-        }
-    }
-
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -238,28 +248,77 @@ fun SettingsTab(onLogout: () -> Unit) {
 }
 
 @Composable
-fun TaskCard(task: TaskItem) {
+fun TaskCard(task: Task) {
+    val statusColor = when(task.status) {
+        "approved" -> Color(0xFF81C784)
+        "pending" -> Color(0xFF64B5F6)
+        else -> Color(0xFFFFB74D)
+    }
+
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(text = task.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                Text(text = "Status: ${task.status}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(task.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text("Dla: ${task.assignedToEmail}", style = MaterialTheme.typography.bodySmall)
+                Text("${task.points} pkt", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
-            Icon(
-                imageVector = if (task.status == "Zatwierdzone") Icons.Default.CheckCircle else Icons.Default.Warning,
-                contentDescription = null,
-                tint = task.color
-            )
+            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = statusColor)
+        }
+    }
+}
+
+@Composable
+fun AddTaskDialog(viewModel: AdminDashboardViewModel, onDismiss: () -> Unit) {
+    val uiState by viewModel.uiState.collectAsState()
+    var title by remember { mutableStateOf("") }
+    var points by remember { mutableStateOf("10") }
+    var selectedChildId by remember { mutableStateOf(uiState.kidsList.firstOrNull()?.id ?: "") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Nowe Zadanie", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Co zrobić?") })
+                OutlinedTextField(value = points, onValueChange = { points = it }, label = { Text("Punkty") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Dla kogo?")
+
+                if (uiState.kidsList.isEmpty()) {
+                    Text("Brak dzieci! Dodaj je w zakładce Dzieci.", color = Color.Red)
+                } else {
+                    uiState.kidsList.forEach { kid ->
+                        Row(
+                            Modifier.fillMaxWidth().selectable(selected = (kid.id == selectedChildId), onClick = { selectedChildId = kid.id }).padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = (kid.id == selectedChildId), onClick = { selectedChildId = kid.id })
+                            Text(kid.email)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val assignedEmail = uiState.kidsList.find { it.id == selectedChildId }?.email ?: ""
+                        viewModel.addTask(title, points.toIntOrNull() ?: 0, selectedChildId, assignedEmail)
+                        onDismiss()
+                    },
+                    enabled = title.isNotBlank() && selectedChildId.isNotBlank()
+                ) {
+                    Text("Zapisz")
+                }
+            }
         }
     }
 }
