@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
 
 data class ChildTask(val title: String, val points: Int, val isDone: Boolean)
 data class RewardItem(val title: String, val cost: Int)
@@ -25,12 +27,14 @@ data class RewardItem(val title: String, val cost: Int)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChildDashboardScreen(
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    viewModel: ChildDashboardViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Moje Zadania", "Nagrody", "Profil")
 
-    // Pobieramy e-mail i wycinamy nazwę przed małpą
+
     val currentUser = FirebaseAuth.getInstance().currentUser
     val userEmail = currentUser?.email ?: "Użytkownik"
     val userName = userEmail.substringBefore("@")
@@ -66,41 +70,50 @@ fun ChildDashboardScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
-                0 -> ChildTasksTab()
-                1 -> ChildRewardsTab()
-                2 -> ChildProfileTab(onLogout, userEmail)
+                0 -> ChildTasksTab(viewModel)
+                1 -> ChildRewardsTab(uiState.userPoints)
+                2 -> ChildProfileTab(onLogout, currentUser?.email ?: "")
             }
         }
     }
 }
 
 @Composable
-fun ChildTasksTab() {
-    val tasks = listOf(
-        ChildTask("Pościel łóżko", 10, false),
-        ChildTask("Odrób lekcje", 20, false),
-        ChildTask("Wyprowadź psa", 15, true)
-    )
+fun ChildTasksTab(viewModel: ChildDashboardViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item {
-            Text("Do zrobienia dzisiaj:", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
+    if (uiState.tasks.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Brak zadań na dziś! Odpoczywaj. 😊", color = Color.Gray)
         }
-        items(tasks) { task ->
-            ChildTaskCard(task)
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                Text("Twoje zadania:", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            items(uiState.tasks) { task ->
+                ChildTaskCard(task, onDone = { viewModel.markTaskAsDone(task.id) })
+            }
         }
     }
 }
 
 @Composable
-fun ChildTaskCard(task: ChildTask) {
+fun ChildTaskCard(task: Task, onDone: () -> Unit) {
+    val isPending = task.status == "pending"
+    val isApproved = task.status == "approved"
+
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (task.isDone) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = when {
+                isApproved -> Color(0xFFE8F5E9)
+                isPending -> Color(0xFFFFF3E0)
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -109,14 +122,15 @@ fun ChildTaskCard(task: ChildTask) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(task.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                 Text("${task.points} pkt", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
             }
-            if (task.isDone) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF43A047))
-            } else {
-                Button(onClick = { }) {
+
+            when {
+                isApproved -> Icon(Icons.Default.CheckCircle, "Gotowe", tint = Color(0xFF43A047))
+                isPending -> Text("Czeka na sprawdzenie", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                else -> Button(onClick = onDone) {
                     Text("Zrobione")
                 }
             }
@@ -125,7 +139,7 @@ fun ChildTaskCard(task: ChildTask) {
 }
 
 @Composable
-fun ChildRewardsTab() {
+fun ChildRewardsTab(points: Int) {
     val rewards = listOf(
         RewardItem("Godzina grania", 100),
         RewardItem("Wyjście na lody", 250),
@@ -133,7 +147,7 @@ fun ChildRewardsTab() {
     )
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Twoje punkty: 45", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Text("Twoje punkty: $points", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(24.dp))
         Text("Na co zbieramy?", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
