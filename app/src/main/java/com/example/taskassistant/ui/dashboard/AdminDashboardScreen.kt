@@ -120,7 +120,7 @@ fun TasksTab(viewModel: AdminDashboardViewModel) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(uiState.tasksList) { task ->
-                TaskCard(task)
+                TaskCard(task, viewModel)
             }
         }
     }
@@ -248,7 +248,7 @@ fun SettingsTab(onLogout: () -> Unit) {
 }
 
 @Composable
-fun TaskCard(task: Task) {
+fun TaskCard(task: Task, viewModel: AdminDashboardViewModel) {
     val statusColor = when(task.status) {
         "approved" -> Color(0xFF81C784)
         "pending" -> Color(0xFF64B5F6)
@@ -257,19 +257,39 @@ fun TaskCard(task: Task) {
 
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(task.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                Text("Dla: ${task.assignedToEmail}", style = MaterialTheme.typography.bodySmall)
-                Text("${task.points} pkt", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(task.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    Text("Dla: ${task.assignedToEmail}", style = MaterialTheme.typography.bodySmall)
+                    Text("${task.points} pkt", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                }
+
+
+                Icon(
+                    imageVector = if (task.status == "approved") Icons.Default.CheckCircle else Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = statusColor
+                )
             }
-            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = statusColor)
+
+
+            if (task.status == "pending") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { viewModel.approveTask(task.id) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047))
+                ) {
+                    Text("Zatwierdź i daj punkty")
+                }
+            }
         }
     }
 }

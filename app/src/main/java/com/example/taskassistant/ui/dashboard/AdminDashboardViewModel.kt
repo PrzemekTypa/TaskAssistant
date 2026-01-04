@@ -163,6 +163,17 @@ class AdminDashboardViewModel : ViewModel() {
             }
     }
 
+    fun approveTask(taskId: String) {
+        db.collection("tasks").document(taskId)
+            .update("status", "approved")
+            .addOnSuccessListener {
+                _uiState.update { it.copy(successMessage = "Zadanie zatwierdzone! Punkty przyznane.") }
+            }
+            .addOnFailureListener { e ->
+                _uiState.update { it.copy(error = "Błąd: ${e.message}") }
+            }
+    }
+
     private fun fetchTasks() {
         if (currentUserId == null) return
 
