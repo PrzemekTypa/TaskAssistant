@@ -197,4 +197,15 @@ class AdminDashboardViewModel : ViewModel() {
             }
     }
 
+    fun deleteTask(taskId: String) {
+        db.collection("tasks").document(taskId)
+            .delete()
+            .addOnSuccessListener {
+                _uiState.update { it.copy(successMessage = "Zadanie zostało usunięte") }
+            }
+            .addOnFailureListener { e ->
+                _uiState.update { it.copy(error = "Błąd usuwania: ${e.message}") }
+            }
+    }
+
 }

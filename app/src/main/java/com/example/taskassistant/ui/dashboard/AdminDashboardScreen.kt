@@ -272,13 +272,26 @@ fun TaskCard(task: Task, viewModel: AdminDashboardViewModel) {
                 }
 
 
-                Icon(
-                    imageVector = if (task.status == "approved") Icons.Default.CheckCircle else Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = statusColor
-                )
-            }
+                Row(verticalAlignment = Alignment.CenterVertically) {
 
+                    Icon(
+                        imageVector = if (task.status == "approved") Icons.Default.CheckCircle else Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = statusColor
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+
+                    IconButton(onClick = { viewModel.deleteTask(task.id) }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Usuń zadanie",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
 
             if (task.status == "pending") {
                 Spacer(modifier = Modifier.height(8.dp))
