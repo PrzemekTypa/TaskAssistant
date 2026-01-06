@@ -21,7 +21,6 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 
-data class ChildTask(val title: String, val points: Int, val isDone: Boolean)
 data class RewardItem(val title: String, val cost: Int)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +94,10 @@ fun ChildTasksTab(viewModel: ChildDashboardViewModel) {
                 Text("Twoje zadania:", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
             }
-            items(uiState.tasks) { task ->
+            items(
+                items = uiState.tasks,
+                key = { task -> task.id }
+            ) { task ->
                 ChildTaskCard(task, onDone = { viewModel.markTaskAsDone(task.id) })
             }
         }

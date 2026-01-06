@@ -119,7 +119,11 @@ fun TasksTab(viewModel: AdminDashboardViewModel) {
             modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(uiState.tasksList) { task ->
+
+            items(
+                items = uiState.tasksList,
+                key = { task -> task.id }
+            ) { task ->
                 TaskCard(task, viewModel)
             }
         }

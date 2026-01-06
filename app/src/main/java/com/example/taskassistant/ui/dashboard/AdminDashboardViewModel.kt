@@ -10,17 +10,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class KidItem(val id: String, val email: String)
-
-data class Task(
-    val id: String = "",
-    val title: String = "",
-    val points: Int = 0,
-    val status: String = "todo", // todo, pending, approved
-    val assignedToId: String = "",
-    val assignedToEmail: String = ""
-)
-
 data class AdminUiState(
     val kidsList: List<KidItem> = emptyList(),
     val tasksList: List<Task> = emptyList(),
