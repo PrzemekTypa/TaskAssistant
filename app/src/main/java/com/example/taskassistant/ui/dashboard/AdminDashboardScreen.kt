@@ -93,7 +93,7 @@ fun AdminDashboardScreen(
             when (selectedTab) {
                 0 -> TasksTab(viewModel)
                 1 -> KidsTab(viewModel)
-                2 -> RewardsTab()
+                2 -> RewardsTab(viewModel)
                 3 -> SettingsTab(onLogout = onLogout)
             }
         }
@@ -215,18 +215,90 @@ fun KidsTab(viewModel: AdminDashboardViewModel) {
 }
 
 @Composable
-fun RewardsTab() {
+fun RewardsTab(viewModel: AdminDashboardViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    var title by remember { mutableStateOf("") }
+    var cost by remember { mutableStateOf("") }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Tu będzie lista nagród", style = MaterialTheme.typography.headlineMedium)
+        Text("Zarządzaj Nagrodami", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { }) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Dodaj nagrodę")
+
+        // Formularz dodawania
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Nowa Nagroda", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Nazwa (np. Pizza)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = cost,
+                    onValueChange = { cost = it },
+                    label = { Text("Koszt (pkt)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        viewModel.addReward(title, cost.toIntOrNull() ?: 0)
+                        title = ""
+                        cost = ""
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = title.isNotBlank() && cost.isNotBlank()
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Text("Dodaj do sklepu")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        if (uiState.rewardsList.isEmpty()) {
+            Text("Brak nagród. Dodaj coś, by zmotywować dziecko!", color = Color.Gray)
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(
+                    items = uiState.rewardsList,
+                    key = { it.id }
+                ) { reward ->
+                    Card(
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(reward.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text("${reward.cost} pkt", color = MaterialTheme.colorScheme.primary)
+                            }
+
+                            IconButton(onClick = { viewModel.deleteReward(reward.id) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Usuń", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

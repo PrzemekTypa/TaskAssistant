@@ -12,3 +12,18 @@ data class Task(
 
 
 data class KidItem(val id: String, val email: String)
+
+data class Reward(
+    val id: String = "",
+    val title: String = "",
+    val cost: Int = 0,
+    val parentId: String = ""
+)
+
+data class Redemption(
+    val id: String = "",
+    val childId: String = "",
+    val rewardTitle: String = "",
+    val cost: Int = 0,
+    val timestamp: Long = System.currentTimeMillis()
+)

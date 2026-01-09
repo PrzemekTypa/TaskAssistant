@@ -21,7 +21,6 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 
-data class RewardItem(val title: String, val cost: Int)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,7 +69,7 @@ fun ChildDashboardScreen(
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
                 0 -> ChildTasksTab(viewModel)
-                1 -> ChildRewardsTab(uiState.userPoints)
+                1 -> ChildRewardsTab(viewModel)
                 2 -> ChildProfileTab(onLogout, currentUser?.email ?: "")
             }
         }
@@ -141,31 +140,76 @@ fun ChildTaskCard(task: Task, onDone: () -> Unit) {
 }
 
 @Composable
-fun ChildRewardsTab(points: Int) {
-    val rewards = listOf(
-        RewardItem("Godzina grania", 100),
-        RewardItem("Wyjście na lody", 250),
-        RewardItem("Kino", 500)
-    )
+fun ChildRewardsTab(viewModel: ChildDashboardViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Twoje punkty: $points", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.height(24.dp))
-        Text("Na co zbieramy?", style = MaterialTheme.typography.titleLarge)
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Dostępne środki", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "${uiState.userPoints} pkt",
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+
+        Text("Sklepik z nagrodami:", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
 
-        rewards.forEach { reward ->
-            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Row(
-                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(reward.title, style = MaterialTheme.typography.bodyLarge)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("${reward.cost}", fontWeight = FontWeight.Bold)
+        if (uiState.rewards.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Rodzic nie dodał jeszcze nagród :(", color = Color.Gray)
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(
+                    items = uiState.rewards,
+                    key = { it.id }
+                ) { reward ->
+                    val canAfford = uiState.userPoints >= reward.cost
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (canAfford) MaterialTheme.colorScheme.surface else Color.LightGray.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(reward.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("${reward.cost}", fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            Button(
+                                onClick = { viewModel.redeemReward(reward) },
+                                enabled = canAfford,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (canAfford) MaterialTheme.colorScheme.primary else Color.Gray
+                                )
+                            ) {
+                                Text(if (canAfford) "Kup" else "Brakuje")
+                            }
+                        }
                     }
                 }
             }

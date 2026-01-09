@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 data class AdminUiState(
     val kidsList: List<KidItem> = emptyList(),
     val tasksList: List<Task> = emptyList(),
+    val rewardsList: List<Reward> = emptyList(),
     val addChildEmail: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -31,6 +32,8 @@ class AdminDashboardViewModel : ViewModel() {
     init {
         fetchKids()
         fetchTasks()
+        fetchRewards()
+
     }
 
     fun onEmailChange(newEmail: String) {
@@ -194,6 +197,52 @@ class AdminDashboardViewModel : ViewModel() {
             }
             .addOnFailureListener { e ->
                 _uiState.update { it.copy(error = "Błąd usuwania: ${e.message}") }
+            }
+    }
+
+    fun addReward(title: String, cost: Int) {
+        if (currentUserId == null) return
+
+        val newReward = Reward(
+            title = title,
+            cost = cost,
+            parentId = currentUserId
+        )
+
+        db.collection("rewards").add(newReward)
+            .addOnSuccessListener {
+                _uiState.update { it.copy(successMessage = "Nagroda dodana!") }
+            }
+            .addOnFailureListener { e ->
+                _uiState.update { it.copy(error = "Błąd: ${e.message}") }
+            }
+    }
+
+    fun deleteReward(rewardId: String) {
+        db.collection("rewards").document(rewardId).delete()
+            .addOnSuccessListener {
+                _uiState.update { it.copy(successMessage = "Nagroda usunięta") }
+            }
+    }
+
+    private fun fetchRewards() {
+        if (currentUserId == null) return
+
+        db.collection("rewards")
+            .whereEqualTo("parentId", currentUserId)
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val rewards = value?.documents?.map { doc ->
+                    Reward(
+                        id = doc.id,
+                        title = doc.getString("title") ?: "",
+                        cost = doc.getLong("cost")?.toInt() ?: 0,
+                        parentId = doc.getString("parentId") ?: ""
+                    )
+                } ?: emptyList()
+
+                _uiState.update { it.copy(rewardsList = rewards) }
             }
     }
 

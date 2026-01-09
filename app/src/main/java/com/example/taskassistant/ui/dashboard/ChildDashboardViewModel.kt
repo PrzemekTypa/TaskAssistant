@@ -8,11 +8,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+
 data class ChildUiState(
     val tasks: List<Task> = emptyList(),
+    val rewards: List<Reward> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val userPoints: Int = 0
+    val userPoints: Int = 0,
+    val successMessage: String? = null
 )
 
 class ChildDashboardViewModel : ViewModel() {
@@ -24,23 +27,53 @@ class ChildDashboardViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
     private val currentUserId = auth.currentUser?.uid
 
+    private var totalEarnedPoints = 0
+    private var totalSpentPoints = 0
+
     init {
+        fetchUserDataAndRewards()
         fetchMyTasks()
+        fetchMyRedemptions()
+    }
+
+    private fun fetchUserDataAndRewards() {
+        if (currentUserId == null) return
+
+        db.collection("users").document(currentUserId).get()
+            .addOnSuccessListener { document ->
+                val parentId = document.getString("parentId")
+                if (parentId != null) {
+                    fetchRewards(parentId)
+                }
+            }
+    }
+
+    private fun fetchRewards(parentId: String) {
+        db.collection("rewards")
+            .whereEqualTo("parentId", parentId)
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val rewardsList = value?.documents?.map { doc ->
+                    Reward(
+                        id = doc.id,
+                        title = doc.getString("title") ?: "",
+                        cost = doc.getLong("cost")?.toInt() ?: 0,
+                        parentId = doc.getString("parentId") ?: ""
+                    )
+                } ?: emptyList()
+
+                _uiState.update { it.copy(rewards = rewardsList) }
+            }
     }
 
     private fun fetchMyTasks() {
         if (currentUserId == null) return
 
-        _uiState.update { it.copy(isLoading = true) }
-
-
         db.collection("tasks")
             .whereEqualTo("assignedToId", currentUserId)
             .addSnapshotListener { value, error ->
-                if (error != null) {
-                    _uiState.update { it.copy(error = error.message, isLoading = false) }
-                    return@addSnapshotListener
-                }
+                if (error != null) return@addSnapshotListener
 
                 val tasksList = value?.documents?.map { doc ->
                     Task(
@@ -54,27 +87,66 @@ class ChildDashboardViewModel : ViewModel() {
                 } ?: emptyList()
 
 
-                val totalPoints = tasksList.filter { it.status == "approved" }.sumOf { it.points }
+                totalEarnedPoints = tasksList.filter { it.status == "approved" }.sumOf { it.points }
 
-                _uiState.update {
-                    it.copy(
-                        tasks = tasksList,
-                        userPoints = totalPoints,
-                        isLoading = false
-                    )
-                }
+                recalculatePoints()
+                _uiState.update { it.copy(tasks = tasksList) }
+            }
+    }
+
+    private fun fetchMyRedemptions() {
+        if (currentUserId == null) return
+
+        db.collection("redemptions")
+            .whereEqualTo("childId", currentUserId)
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val spent = value?.documents?.sumOf { doc ->
+                    doc.getLong("cost")?.toInt() ?: 0
+                } ?: 0
+
+                totalSpentPoints = spent
+                recalculatePoints()
+            }
+    }
+
+    private fun recalculatePoints() {
+        _uiState.update {
+            it.copy(userPoints = totalEarnedPoints - totalSpentPoints)
+        }
+    }
+
+    fun redeemReward(reward: Reward) {
+        if (currentUserId == null) return
+
+        if (_uiState.value.userPoints < reward.cost) {
+            _uiState.update { it.copy(error = "Za mało punktów!") }
+            return
+        }
+
+        val redemption = Redemption(
+            childId = currentUserId,
+            rewardTitle = reward.title,
+            cost = reward.cost,
+            timestamp = System.currentTimeMillis()
+        )
+
+        db.collection("redemptions").add(redemption)
+            .addOnSuccessListener {
+                _uiState.update { it.copy(successMessage = "Kupiono: ${reward.title}!") }
+            }
+            .addOnFailureListener { e ->
+                _uiState.update { it.copy(error = "Błąd zakupu: ${e.message}") }
             }
     }
 
     fun markTaskAsDone(taskId: String) {
         db.collection("tasks").document(taskId)
             .update("status", "pending")
-            .addOnFailureListener { e ->
-                _uiState.update { it.copy(error = "Błąd: ${e.message}") }
-            }
     }
 
     fun onMessageShown() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, successMessage = null) }
     }
 }
