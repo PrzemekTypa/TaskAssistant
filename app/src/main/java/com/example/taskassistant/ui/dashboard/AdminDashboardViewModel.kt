@@ -15,6 +15,7 @@ data class AdminUiState(
     val tasksList: List<Task> = emptyList(),
     val rewardsList: List<Reward> = emptyList(),
     val addChildEmail: String = "",
+    val redemptionsList: List<Redemption> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null
@@ -33,7 +34,7 @@ class AdminDashboardViewModel : ViewModel() {
         fetchKids()
         fetchTasks()
         fetchRewards()
-
+        fetchRedemptions()
     }
 
     fun onEmailChange(newEmail: String) {
@@ -243,6 +244,39 @@ class AdminDashboardViewModel : ViewModel() {
                 } ?: emptyList()
 
                 _uiState.update { it.copy(rewardsList = rewards) }
+            }
+    }
+
+    private fun fetchRedemptions() {
+        if (currentUserId == null) return
+
+        db.collection("redemptions")
+            .whereEqualTo("parentId", currentUserId)
+            .whereEqualTo("status", "pending")
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val purchases = value?.documents?.map { doc ->
+                    Redemption(
+                        id = doc.id,
+                        childId = doc.getString("childId") ?: "",
+                        parentId = doc.getString("parentId") ?: "",
+                        rewardTitle = doc.getString("rewardTitle") ?: "",
+                        cost = doc.getLong("cost")?.toInt() ?: 0,
+                        status = doc.getString("status") ?: "pending"
+                    )
+                } ?: emptyList()
+
+                _uiState.update { it.copy(redemptionsList = purchases) }
+            }
+    }
+
+
+    fun markRedemptionAsDelivered(purchaseId: String) {
+        db.collection("redemptions").document(purchaseId)
+            .update("status", "completed")
+            .addOnSuccessListener {
+                _uiState.update { it.copy(successMessage = "Nagroda wydana!") }
             }
     }
 

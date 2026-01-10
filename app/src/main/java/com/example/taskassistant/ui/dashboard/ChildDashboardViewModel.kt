@@ -26,6 +26,7 @@ class ChildDashboardViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
     private val currentUserId = auth.currentUser?.uid
+    private var currentParentId: String = ""
 
     private var totalEarnedPoints = 0
     private var totalSpentPoints = 0
@@ -43,6 +44,7 @@ class ChildDashboardViewModel : ViewModel() {
             .addOnSuccessListener { document ->
                 val parentId = document.getString("parentId")
                 if (parentId != null) {
+                    currentParentId = parentId
                     fetchRewards(parentId)
                 }
             }
@@ -120,24 +122,41 @@ class ChildDashboardViewModel : ViewModel() {
     fun redeemReward(reward: Reward) {
         if (currentUserId == null) return
 
-        if (_uiState.value.userPoints < reward.cost) {
-            _uiState.update { it.copy(error = "Za mało punktów!") }
-            return
-        }
+        db.collection("users").document(currentUserId).get()
+            .addOnSuccessListener { document ->
+                val freshParentId = document.getString("parentId")
 
-        val redemption = Redemption(
-            childId = currentUserId,
-            rewardTitle = reward.title,
-            cost = reward.cost,
-            timestamp = System.currentTimeMillis()
-        )
+                if (freshParentId.isNullOrEmpty()) {
+                    _uiState.update { it.copy(error = "Błąd: Nie masz przypisanego rodzica! Poproś go o połączenie konta.") }
+                    return@addOnSuccessListener
+                }
 
-        db.collection("redemptions").add(redemption)
-            .addOnSuccessListener {
-                _uiState.update { it.copy(successMessage = "Kupiono: ${reward.title}!") }
+
+                if (_uiState.value.userPoints < reward.cost) {
+                    _uiState.update { it.copy(error = "Za mało punktów!") }
+                    return@addOnSuccessListener
+                }
+
+
+                val redemption = Redemption(
+                    childId = currentUserId,
+                    parentId = freshParentId,
+                    rewardTitle = reward.title,
+                    cost = reward.cost,
+                    status = "pending",
+                    timestamp = System.currentTimeMillis()
+                )
+
+                db.collection("redemptions").add(redemption)
+                    .addOnSuccessListener {
+                        _uiState.update { it.copy(successMessage = "Kupiono: ${reward.title}!") }
+                    }
+                    .addOnFailureListener { e ->
+                        _uiState.update { it.copy(error = "Błąd zakupu: ${e.message}") }
+                    }
             }
-            .addOnFailureListener { e ->
-                _uiState.update { it.copy(error = "Błąd zakupu: ${e.message}") }
+            .addOnFailureListener {
+                _uiState.update { it.copy(error = "Błąd połączenia z siecią") }
             }
     }
 

@@ -23,7 +23,9 @@ data class Reward(
 data class Redemption(
     val id: String = "",
     val childId: String = "",
+    val parentId: String = "",
     val rewardTitle: String = "",
     val cost: Int = 0,
+    val status: String = "pending",
     val timestamp: Long = System.currentTimeMillis()
 )

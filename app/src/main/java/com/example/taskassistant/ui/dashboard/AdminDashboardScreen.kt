@@ -220,82 +220,93 @@ fun RewardsTab(viewModel: AdminDashboardViewModel) {
     var title by remember { mutableStateOf("") }
     var cost by remember { mutableStateOf("") }
 
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        contentPadding = PaddingValues(bottom = 80.dp)
     ) {
-        Text("Zarządzaj Nagrodami", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+        item {
+            Text("Zarządzaj Nagrodami", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Formularz dodawania
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Nowa Nagroda", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Nazwa (np. Pizza)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = cost,
-                    onValueChange = { cost = it },
-                    label = { Text("Koszt (pkt)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = {
-                        viewModel.addReward(title, cost.toIntOrNull() ?: 0)
-                        title = ""
-                        cost = ""
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = title.isNotBlank() && cost.isNotBlank()
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Text("Dodaj do sklepu")
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Nowa Nagroda", style = MaterialTheme.typography.titleMedium)
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Nazwa") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = cost,
+                        onValueChange = { cost = it },
+                        label = { Text("Koszt") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            viewModel.addReward(title, cost.toIntOrNull() ?: 0); title = ""; cost =
+                            ""
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        enabled = title.isNotBlank() && cost.isNotBlank()
+                    ) { Text("Dodaj") }
                 }
             }
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        if (uiState.rewardsList.isEmpty()) {
-            Text("Brak nagród. Dodaj coś, by zmotywować dziecko!", color = Color.Gray)
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(
-                    items = uiState.rewardsList,
-                    key = { it.id }
-                ) { reward ->
-                    Card(
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        modifier = Modifier.fillMaxWidth()
+        if (uiState.redemptionsList.isNotEmpty()) {
+            item {
+                Text(
+                    "DO WYDANIA",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            items(uiState.redemptionsList) { purchase ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(reward.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                Text("${reward.cost} pkt", color = MaterialTheme.colorScheme.primary)
-                            }
-
-                            IconButton(onClick = { viewModel.deleteReward(reward.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Usuń", tint = MaterialTheme.colorScheme.error)
-                            }
+                        Column {
+                            Text("Kupił(a): ${purchase.rewardTitle}", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Koszt: ${purchase.cost} pkt",
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
+                        Button(onClick = { viewModel.markRedemptionAsDelivered(purchase.id) }) {
+                            Text("Wydaj")
+                        }
+                    }
+                }
+            }
+            item { Divider(modifier = Modifier.padding(vertical = 16.dp)) }
+        }
+
+        item {
+            Text("Twój Sklepik", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        items(uiState.rewardsList) { reward ->
+            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                Row(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("${reward.title} (${reward.cost} pkt)")
+                    IconButton(onClick = { viewModel.deleteReward(reward.id) }) {
+                        Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
