@@ -1,14 +1,13 @@
 package com.example.taskassistant.ui.dashboard
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 data class AdminUiState(
     val kidsList: List<KidItem> = emptyList(),
@@ -79,7 +78,6 @@ class AdminDashboardViewModel : ViewModel() {
     fun removeChild(childId: String) {
         _uiState.update { it.copy(isLoading = true) }
 
-
         db.collection("users").document(childId)
             .update("parentId", null)
             .addOnSuccessListener {
@@ -122,7 +120,10 @@ class AdminDashboardViewModel : ViewModel() {
         db.collection("users")
             .whereEqualTo("parentId", currentUserId)
             .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    Log.e("ADMIN_LOG", "Błąd kids: ${error.message}")
+                    return@addSnapshotListener
+                }
 
                 val kids = value?.documents?.map { doc ->
                     KidItem(
@@ -134,6 +135,7 @@ class AdminDashboardViewModel : ViewModel() {
                 _uiState.update { it.copy(kidsList = kids) }
             }
     }
+
     fun addTask(title: String, points: Int, assignedChildId: String, assignedChildEmail: String) {
         if (currentUserId == null) return
 
@@ -254,9 +256,12 @@ class AdminDashboardViewModel : ViewModel() {
             .whereEqualTo("parentId", currentUserId)
             .whereEqualTo("status", "pending")
             .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    Log.e("ADMIN_LOG", "Błąd pobierania nagród: ${error.message}")
+                    return@addSnapshotListener
+                }
 
-                val purchases = value?.documents?.map { doc ->
+                val purchases = value?.documents?.mapNotNull { doc ->
                     Redemption(
                         id = doc.id,
                         childId = doc.getString("childId") ?: "",
@@ -267,10 +272,10 @@ class AdminDashboardViewModel : ViewModel() {
                     )
                 } ?: emptyList()
 
+                Log.d("ADMIN_LOG", "Pobrano prośby o nagrody: ${purchases.size}")
                 _uiState.update { it.copy(redemptionsList = purchases) }
             }
     }
-
 
     fun markRedemptionAsDelivered(purchaseId: String) {
         db.collection("redemptions").document(purchaseId)
@@ -278,6 +283,8 @@ class AdminDashboardViewModel : ViewModel() {
             .addOnSuccessListener {
                 _uiState.update { it.copy(successMessage = "Nagroda wydana!") }
             }
+            .addOnFailureListener { e ->
+                _uiState.update { it.copy(error = "Błąd: ${e.message}") }
+            }
     }
-
 }

@@ -1,5 +1,6 @@
 package com.example.taskassistant.ui.dashboard
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -7,7 +8,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-
 
 data class ChildUiState(
     val tasks: List<Task> = emptyList(),
@@ -26,37 +26,46 @@ class ChildDashboardViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
     private val currentUserId = auth.currentUser?.uid
+
     private var currentParentId: String = ""
 
     private var totalEarnedPoints = 0
     private var totalSpentPoints = 0
 
     init {
-        fetchUserDataAndRewards()
-        fetchMyTasks()
-        fetchMyRedemptions()
+        Log.d("FIREBASE_LOG", "Init ViewModelu Dziecka. UserID: $currentUserId")
+        startListeningToUserAndRewards()
+        startListeningToTasks()
+        startListeningToRedemptions()
     }
 
-    private fun fetchUserDataAndRewards() {
+    private fun startListeningToUserAndRewards() {
         if (currentUserId == null) return
 
-        db.collection("users").document(currentUserId).get()
-            .addOnSuccessListener { document ->
-                val parentId = document.getString("parentId")
-                if (parentId != null) {
+        db.collection("users").document(currentUserId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("FIREBASE_LOG", "Błąd nasłuchu usera: ${error.message}")
+                    return@addSnapshotListener
+                }
+
+                val parentId = snapshot?.getString("parentId")
+                Log.d("FIREBASE_LOG", "Znaleziono ParentID: $parentId")
+
+                if (!parentId.isNullOrEmpty()) {
                     currentParentId = parentId
-                    fetchRewards(parentId)
+                    startListeningToRewards(parentId)
                 }
             }
     }
 
-    private fun fetchRewards(parentId: String) {
+    private fun startListeningToRewards(parentId: String) {
         db.collection("rewards")
             .whereEqualTo("parentId", parentId)
             .addSnapshotListener { value, error ->
                 if (error != null) return@addSnapshotListener
 
-                val rewardsList = value?.documents?.map { doc ->
+                val rewardsList = value?.documents?.mapNotNull { doc ->
                     Reward(
                         id = doc.id,
                         title = doc.getString("title") ?: "",
@@ -65,19 +74,23 @@ class ChildDashboardViewModel : ViewModel() {
                     )
                 } ?: emptyList()
 
+                Log.d("FIREBASE_LOG", "Pobrano nagrody: ${rewardsList.size}")
                 _uiState.update { it.copy(rewards = rewardsList) }
             }
     }
 
-    private fun fetchMyTasks() {
+    private fun startListeningToTasks() {
         if (currentUserId == null) return
 
         db.collection("tasks")
             .whereEqualTo("assignedToId", currentUserId)
             .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    Log.e("FIREBASE_LOG", "Błąd zadań: ${error.message}")
+                    return@addSnapshotListener
+                }
 
-                val tasksList = value?.documents?.map { doc ->
+                val tasksList = value?.documents?.mapNotNull { doc ->
                     Task(
                         id = doc.id,
                         title = doc.getString("title") ?: "",
@@ -88,6 +101,7 @@ class ChildDashboardViewModel : ViewModel() {
                     )
                 } ?: emptyList()
 
+                Log.d("FIREBASE_LOG", "Pobrano zadania: ${tasksList.size}")
 
                 totalEarnedPoints = tasksList.filter { it.status == "approved" }.sumOf { it.points }
 
@@ -96,7 +110,7 @@ class ChildDashboardViewModel : ViewModel() {
             }
     }
 
-    private fun fetchMyRedemptions() {
+    private fun startListeningToRedemptions() {
         if (currentUserId == null) return
 
         db.collection("redemptions")
@@ -108,55 +122,48 @@ class ChildDashboardViewModel : ViewModel() {
                     doc.getLong("cost")?.toInt() ?: 0
                 } ?: 0
 
+                Log.d("FIREBASE_LOG", "Suma wydatków: $spent")
                 totalSpentPoints = spent
                 recalculatePoints()
             }
     }
 
     private fun recalculatePoints() {
+        val balance = totalEarnedPoints - totalSpentPoints
+        Log.d("FIREBASE_LOG", "Przeliczam punkty: $totalEarnedPoints - $totalSpentPoints = $balance")
         _uiState.update {
-            it.copy(userPoints = totalEarnedPoints - totalSpentPoints)
+            it.copy(userPoints = balance)
         }
     }
 
     fun redeemReward(reward: Reward) {
-        if (currentUserId == null) return
+        val userId = currentUserId ?: return
 
-        db.collection("users").document(currentUserId).get()
-            .addOnSuccessListener { document ->
-                val freshParentId = document.getString("parentId")
+        if (currentParentId.isEmpty()) {
+            _uiState.update { it.copy(error = "Błąd: Brak połączonego rodzica!") }
+            return
+        }
 
-                if (freshParentId.isNullOrEmpty()) {
-                    _uiState.update { it.copy(error = "Błąd: Nie masz przypisanego rodzica! Poproś go o połączenie konta.") }
-                    return@addOnSuccessListener
-                }
+        if (_uiState.value.userPoints < reward.cost) {
+            _uiState.update { it.copy(error = "Za mało punktów!") }
+            return
+        }
 
+        val redemptionData = hashMapOf(
+            "childId" to userId,
+            "parentId" to currentParentId,
+            "rewardTitle" to reward.title,
+            "cost" to reward.cost,
+            "status" to "pending",
+            "timestamp" to System.currentTimeMillis()
+        )
 
-                if (_uiState.value.userPoints < reward.cost) {
-                    _uiState.update { it.copy(error = "Za mało punktów!") }
-                    return@addOnSuccessListener
-                }
-
-
-                val redemption = Redemption(
-                    childId = currentUserId,
-                    parentId = freshParentId,
-                    rewardTitle = reward.title,
-                    cost = reward.cost,
-                    status = "pending",
-                    timestamp = System.currentTimeMillis()
-                )
-
-                db.collection("redemptions").add(redemption)
-                    .addOnSuccessListener {
-                        _uiState.update { it.copy(successMessage = "Kupiono: ${reward.title}!") }
-                    }
-                    .addOnFailureListener { e ->
-                        _uiState.update { it.copy(error = "Błąd zakupu: ${e.message}") }
-                    }
+        db.collection("redemptions").add(redemptionData)
+            .addOnSuccessListener {
+                _uiState.update { it.copy(successMessage = "Kupiono: ${reward.title}!") }
             }
-            .addOnFailureListener {
-                _uiState.update { it.copy(error = "Błąd połączenia z siecią") }
+            .addOnFailureListener { e ->
+                _uiState.update { it.copy(error = "Błąd zakupu: ${e.message}") }
             }
     }
 
