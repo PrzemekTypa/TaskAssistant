@@ -121,7 +121,6 @@ class AdminDashboardViewModel : ViewModel() {
             .whereEqualTo("parentId", currentUserId)
             .addSnapshotListener { value, error ->
                 if (error != null) {
-                    Log.e("ADMIN_LOG", "Błąd kids: ${error.message}")
                     return@addSnapshotListener
                 }
 
@@ -139,23 +138,51 @@ class AdminDashboardViewModel : ViewModel() {
     fun addTask(title: String, points: Int, assignedChildId: String, assignedChildEmail: String) {
         if (currentUserId == null) return
 
-        val newTask = hashMapOf(
-            "title" to title,
-            "points" to points,
-            "status" to "todo",
-            "parentId" to currentUserId,
-            "assignedToId" to assignedChildId,
-            "assignedToEmail" to assignedChildEmail,
-            "createdAt" to System.currentTimeMillis()
-        )
+        if (assignedChildId == "ALL") {
+            val batch = db.batch()
+            val kids = _uiState.value.kidsList
 
-        db.collection("tasks").add(newTask)
-            .addOnSuccessListener {
-                _uiState.update { it.copy(successMessage = "Zadanie dodane!") }
+            kids.forEach { kid ->
+                val newDocRef = db.collection("tasks").document()
+                val newTask = hashMapOf(
+                    "title" to title,
+                    "points" to points,
+                    "status" to "todo",
+                    "parentId" to currentUserId,
+                    "assignedToId" to kid.id,
+                    "assignedToEmail" to kid.email,
+                    "createdAt" to System.currentTimeMillis()
+                )
+                batch.set(newDocRef, newTask)
             }
-            .addOnFailureListener { e ->
-                _uiState.update { it.copy(error = "Błąd dodawania: ${e.message}") }
-            }
+
+            batch.commit()
+                .addOnSuccessListener {
+                    _uiState.update { it.copy(successMessage = "Zadanie dodano dla wszystkich dzieci!") }
+                }
+                .addOnFailureListener { e ->
+                    _uiState.update { it.copy(error = "Błąd: ${e.message}") }
+                }
+
+        } else {
+            val newTask = hashMapOf(
+                "title" to title,
+                "points" to points,
+                "status" to "todo",
+                "parentId" to currentUserId,
+                "assignedToId" to assignedChildId,
+                "assignedToEmail" to assignedChildEmail,
+                "createdAt" to System.currentTimeMillis()
+            )
+
+            db.collection("tasks").add(newTask)
+                .addOnSuccessListener {
+                    _uiState.update { it.copy(successMessage = "Zadanie dodane!") }
+                }
+                .addOnFailureListener { e ->
+                    _uiState.update { it.copy(error = "Błąd dodawania: ${e.message}") }
+                }
+        }
     }
 
     fun approveTask(taskId: String) {
@@ -257,7 +284,6 @@ class AdminDashboardViewModel : ViewModel() {
             .whereEqualTo("status", "pending")
             .addSnapshotListener { value, error ->
                 if (error != null) {
-                    Log.e("ADMIN_LOG", "Błąd pobierania nagród: ${error.message}")
                     return@addSnapshotListener
                 }
 
@@ -272,7 +298,6 @@ class AdminDashboardViewModel : ViewModel() {
                     )
                 } ?: emptyList()
 
-                Log.d("ADMIN_LOG", "Pobrano prośby o nagrody: ${purchases.size}")
                 _uiState.update { it.copy(redemptionsList = purchases) }
             }
     }

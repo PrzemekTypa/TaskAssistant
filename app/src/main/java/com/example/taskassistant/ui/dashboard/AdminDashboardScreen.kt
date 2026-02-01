@@ -1,10 +1,8 @@
 package com.example.taskassistant.ui.dashboard
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
@@ -30,7 +28,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +116,6 @@ fun TasksTab(viewModel: AdminDashboardViewModel) {
             modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-
             items(
                 items = uiState.tasksList,
                 key = { task -> task.id }
@@ -139,7 +135,6 @@ fun KidsTab(viewModel: AdminDashboardViewModel) {
     ) {
         Text("Twoje Dzieci", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
-
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -171,7 +166,6 @@ fun KidsTab(viewModel: AdminDashboardViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-
         if (uiState.kidsList.isEmpty()) {
             Text("Brak połączonych kont", color = Color.Gray)
         } else {
@@ -191,14 +185,11 @@ fun KidsTab(viewModel: AdminDashboardViewModel) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Face, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(kid.email, style = MaterialTheme.typography.bodyLarge)
                             }
-
-
                             IconButton(onClick = { viewModel.removeChild(kid.id) }) {
                                 Icon(
                                     androidx.compose.material.icons.Icons.Default.Delete,
@@ -358,18 +349,13 @@ fun TaskCard(task: Task, viewModel: AdminDashboardViewModel) {
                     Text("${task.points} pkt", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
 
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
-
                     Icon(
                         imageVector = if (task.status == "approved") Icons.Default.CheckCircle else Icons.Default.Warning,
                         contentDescription = null,
                         tint = statusColor
                     )
-
                     Spacer(modifier = Modifier.width(8.dp))
-
-
                     IconButton(onClick = { viewModel.deleteTask(task.id) }) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -399,7 +385,8 @@ fun AddTaskDialog(viewModel: AdminDashboardViewModel, onDismiss: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
     var title by remember { mutableStateOf("") }
     var points by remember { mutableStateOf("10") }
-    var selectedChildId by remember { mutableStateOf(uiState.kidsList.firstOrNull()?.id ?: "") }
+
+    var selectedChildId by remember { mutableStateOf("ALL") }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -416,6 +403,14 @@ fun AddTaskDialog(viewModel: AdminDashboardViewModel, onDismiss: () -> Unit) {
                 if (uiState.kidsList.isEmpty()) {
                     Text("Brak dzieci! Dodaj je w zakładce Dzieci.", color = Color.Red)
                 } else {
+                    Row(
+                        Modifier.fillMaxWidth().selectable(selected = (selectedChildId == "ALL"), onClick = { selectedChildId = "ALL" }).padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = (selectedChildId == "ALL"), onClick = { selectedChildId = "ALL" })
+                        Text("Wszystkie dzieci")
+                    }
+
                     uiState.kidsList.forEach { kid ->
                         Row(
                             Modifier.fillMaxWidth().selectable(selected = (kid.id == selectedChildId), onClick = { selectedChildId = kid.id }).padding(8.dp),
@@ -434,7 +429,7 @@ fun AddTaskDialog(viewModel: AdminDashboardViewModel, onDismiss: () -> Unit) {
                         viewModel.addTask(title, points.toIntOrNull() ?: 0, selectedChildId, assignedEmail)
                         onDismiss()
                     },
-                    enabled = title.isNotBlank() && selectedChildId.isNotBlank()
+                    enabled = title.isNotBlank() && (selectedChildId.isNotBlank() || selectedChildId == "ALL")
                 ) {
                     Text("Zapisz")
                 }
