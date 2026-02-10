@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,13 +28,99 @@ class AdminDashboardViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
-    private val currentUserId = auth.currentUser?.uid
 
-    init {
-        fetchKids()
-        fetchTasks()
-        fetchRewards()
-        fetchRedemptions()
+    private var kidsListener: ListenerRegistration? = null
+    private var tasksListener: ListenerRegistration? = null
+    private var rewardsListener: ListenerRegistration? = null
+    private var redemptionsListener: ListenerRegistration? = null
+
+    fun startListening() {
+        val currentUserId = auth.currentUser?.uid ?: return
+
+        stopListening()
+
+        kidsListener = db.collection("users")
+            .whereEqualTo("parentId", currentUserId)
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val kids = value?.documents?.map { doc ->
+                    KidItem(
+                        id = doc.id,
+                        email = doc.getString("email") ?: "Brak emaila"
+                    )
+                } ?: emptyList()
+
+                _uiState.update { it.copy(kidsList = kids) }
+            }
+
+        tasksListener = db.collection("tasks")
+            .whereEqualTo("parentId", currentUserId)
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val tasks = value?.documents?.map { doc ->
+                    Task(
+                        id = doc.id,
+                        title = doc.getString("title") ?: "",
+                        points = doc.getLong("points")?.toInt() ?: 0,
+                        status = doc.getString("status") ?: "todo",
+                        assignedToId = doc.getString("assignedToId") ?: "",
+                        assignedToEmail = doc.getString("assignedToEmail") ?: ""
+                    )
+                } ?: emptyList()
+
+                _uiState.update { it.copy(tasksList = tasks) }
+            }
+
+        rewardsListener = db.collection("rewards")
+            .whereEqualTo("parentId", currentUserId)
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val rewards = value?.documents?.map { doc ->
+                    Reward(
+                        id = doc.id,
+                        title = doc.getString("title") ?: "",
+                        cost = doc.getLong("cost")?.toInt() ?: 0,
+                        parentId = doc.getString("parentId") ?: ""
+                    )
+                } ?: emptyList()
+
+                _uiState.update { it.copy(rewardsList = rewards) }
+            }
+
+        redemptionsListener = db.collection("redemptions")
+            .whereEqualTo("parentId", currentUserId)
+            .whereEqualTo("status", "pending")
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val purchases = value?.documents?.mapNotNull { doc ->
+                    Redemption(
+                        id = doc.id,
+                        childId = doc.getString("childId") ?: "",
+                        parentId = doc.getString("parentId") ?: "",
+                        rewardTitle = doc.getString("rewardTitle") ?: "",
+                        cost = doc.getLong("cost")?.toInt() ?: 0,
+                        status = doc.getString("status") ?: "pending"
+                    )
+                } ?: emptyList()
+
+                _uiState.update { it.copy(redemptionsList = purchases) }
+            }
+    }
+
+    fun stopListening() {
+        kidsListener?.remove()
+        tasksListener?.remove()
+        rewardsListener?.remove()
+        redemptionsListener?.remove()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopListening()
     }
 
     fun onEmailChange(newEmail: String) {
@@ -45,6 +132,7 @@ class AdminDashboardViewModel : ViewModel() {
     }
 
     fun addChild() {
+        val currentUserId = auth.currentUser?.uid ?: return
         val emailToAdd = _uiState.value.addChildEmail.trim()
         if (emailToAdd.isBlank()) {
             _uiState.update { it.copy(error = "Wpisz email dziecka") }
@@ -64,7 +152,7 @@ class AdminDashboardViewModel : ViewModel() {
                     val role = childDoc.getString("role")
 
                     if (role == "child") {
-                        linkChildToParent(childDoc.id)
+                        linkChildToParent(childDoc.id, currentUserId)
                     } else {
                         _uiState.update { it.copy(isLoading = false, error = "Ten użytkownik nie jest kontem dziecka") }
                     }
@@ -87,16 +175,13 @@ class AdminDashboardViewModel : ViewModel() {
                         successMessage = "Usunięto dziecko z listy"
                     )
                 }
-                fetchKids()
             }
             .addOnFailureListener { e ->
                 _uiState.update { it.copy(isLoading = false, error = "Błąd usuwania: ${e.message}") }
             }
     }
 
-    private fun linkChildToParent(childId: String) {
-        if (currentUserId == null) return
-
+    private fun linkChildToParent(childId: String, currentUserId: String) {
         db.collection("users").document(childId)
             .update("parentId", currentUserId)
             .addOnSuccessListener {
@@ -107,36 +192,14 @@ class AdminDashboardViewModel : ViewModel() {
                         addChildEmail = ""
                     )
                 }
-                fetchKids()
             }
             .addOnFailureListener { e ->
                 _uiState.update { it.copy(isLoading = false, error = "Błąd łączenia: ${e.message}") }
             }
     }
 
-    private fun fetchKids() {
-        if (currentUserId == null) return
-
-        db.collection("users")
-            .whereEqualTo("parentId", currentUserId)
-            .addSnapshotListener { value, error ->
-                if (error != null) {
-                    return@addSnapshotListener
-                }
-
-                val kids = value?.documents?.map { doc ->
-                    KidItem(
-                        id = doc.id,
-                        email = doc.getString("email") ?: "Brak emaila"
-                    )
-                } ?: emptyList()
-
-                _uiState.update { it.copy(kidsList = kids) }
-            }
-    }
-
     fun addTask(title: String, points: Int, assignedChildId: String, assignedChildEmail: String) {
-        if (currentUserId == null) return
+        val currentUserId = auth.currentUser?.uid ?: return
 
         if (assignedChildId == "ALL") {
             val kids = _uiState.value.kidsList
@@ -217,29 +280,6 @@ class AdminDashboardViewModel : ViewModel() {
             }
     }
 
-    private fun fetchTasks() {
-        if (currentUserId == null) return
-
-        db.collection("tasks")
-            .whereEqualTo("parentId", currentUserId)
-            .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
-
-                val tasks = value?.documents?.map { doc ->
-                    Task(
-                        id = doc.id,
-                        title = doc.getString("title") ?: "",
-                        points = doc.getLong("points")?.toInt() ?: 0,
-                        status = doc.getString("status") ?: "todo",
-                        assignedToId = doc.getString("assignedToId") ?: "",
-                        assignedToEmail = doc.getString("assignedToEmail") ?: ""
-                    )
-                } ?: emptyList()
-
-                _uiState.update { it.copy(tasksList = tasks) }
-            }
-    }
-
     fun deleteTask(taskId: String) {
         db.collection("tasks").document(taskId)
             .delete()
@@ -252,7 +292,7 @@ class AdminDashboardViewModel : ViewModel() {
     }
 
     fun addReward(title: String, cost: Int) {
-        if (currentUserId == null) return
+        val currentUserId = auth.currentUser?.uid ?: return
 
         val newReward = Reward(
             title = title,
@@ -273,53 +313,6 @@ class AdminDashboardViewModel : ViewModel() {
         db.collection("rewards").document(rewardId).delete()
             .addOnSuccessListener {
                 _uiState.update { it.copy(successMessage = "Nagroda usunięta") }
-            }
-    }
-
-    private fun fetchRewards() {
-        if (currentUserId == null) return
-
-        db.collection("rewards")
-            .whereEqualTo("parentId", currentUserId)
-            .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
-
-                val rewards = value?.documents?.map { doc ->
-                    Reward(
-                        id = doc.id,
-                        title = doc.getString("title") ?: "",
-                        cost = doc.getLong("cost")?.toInt() ?: 0,
-                        parentId = doc.getString("parentId") ?: ""
-                    )
-                } ?: emptyList()
-
-                _uiState.update { it.copy(rewardsList = rewards) }
-            }
-    }
-
-    private fun fetchRedemptions() {
-        if (currentUserId == null) return
-
-        db.collection("redemptions")
-            .whereEqualTo("parentId", currentUserId)
-            .whereEqualTo("status", "pending")
-            .addSnapshotListener { value, error ->
-                if (error != null) {
-                    return@addSnapshotListener
-                }
-
-                val purchases = value?.documents?.mapNotNull { doc ->
-                    Redemption(
-                        id = doc.id,
-                        childId = doc.getString("childId") ?: "",
-                        parentId = doc.getString("parentId") ?: "",
-                        rewardTitle = doc.getString("rewardTitle") ?: "",
-                        cost = doc.getLong("cost")?.toInt() ?: 0,
-                        status = doc.getString("status") ?: "pending"
-                    )
-                } ?: emptyList()
-
-                _uiState.update { it.copy(redemptionsList = purchases) }
             }
     }
 

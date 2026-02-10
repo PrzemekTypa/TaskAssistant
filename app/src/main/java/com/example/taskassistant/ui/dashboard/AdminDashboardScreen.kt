@@ -42,6 +42,10 @@ fun AdminDashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        viewModel.startListening()
+    }
+
     LaunchedEffect(uiState.error, uiState.successMessage) {
         uiState.error?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -91,7 +95,10 @@ fun AdminDashboardScreen(
                 0 -> TasksTab(viewModel)
                 1 -> KidsTab(viewModel)
                 2 -> RewardsTab(viewModel)
-                3 -> SettingsTab(onLogout = onLogout)
+                3 -> SettingsTab(onLogout = {
+                    viewModel.stopListening()
+                    onLogout()
+                })
             }
         }
         if (showAddTaskDialog) {
@@ -216,6 +223,49 @@ fun RewardsTab(viewModel: AdminDashboardViewModel) {
         horizontalAlignment = Alignment.CenterHorizontally,
         contentPadding = PaddingValues(bottom = 80.dp)
     ) {
+        if (uiState.redemptionsList.isNotEmpty()) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "❗ DO WYDANIA ❗",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text("Dzieci czekają na te nagrody:")
+                    }
+                }
+            }
+            items(uiState.redemptionsList) { purchase ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("NAGRODA: ${purchase.rewardTitle}", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Koszt: ${purchase.cost} pkt",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Button(onClick = { viewModel.markRedemptionAsDelivered(purchase.id) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047))) {
+                            Text("Wydaj")
+                        }
+                    }
+                }
+            }
+            item { Divider(modifier = Modifier.padding(vertical = 16.dp)) }
+        }
+
         item {
             Text("Zarządzaj Nagrodami", style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.height(16.dp))
@@ -233,7 +283,8 @@ fun RewardsTab(viewModel: AdminDashboardViewModel) {
                         value = cost,
                         onValueChange = { cost = it },
                         label = { Text("Koszt") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     Button(
                         onClick = {
@@ -246,42 +297,6 @@ fun RewardsTab(viewModel: AdminDashboardViewModel) {
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        if (uiState.redemptionsList.isNotEmpty()) {
-            item {
-                Text(
-                    "DO WYDANIA",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            items(uiState.redemptionsList) { purchase ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Kupił(a): ${purchase.rewardTitle}", fontWeight = FontWeight.Bold)
-                            Text(
-                                "Koszt: ${purchase.cost} pkt",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        Button(onClick = { viewModel.markRedemptionAsDelivered(purchase.id) }) {
-                            Text("Wydaj")
-                        }
-                    }
-                }
-            }
-            item { Divider(modifier = Modifier.padding(vertical = 16.dp)) }
         }
 
         item {
