@@ -1,8 +1,8 @@
 package com.example.taskassistant.ui.dashboard
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -139,8 +139,13 @@ class AdminDashboardViewModel : ViewModel() {
         if (currentUserId == null) return
 
         if (assignedChildId == "ALL") {
-            val batch = db.batch()
             val kids = _uiState.value.kidsList
+            if (kids.isEmpty()) {
+                _uiState.update { it.copy(error = "Nie masz dodanych żadnych dzieci!") }
+                return
+            }
+
+            val batch = db.batch()
 
             kids.forEach { kid ->
                 val newDocRef = db.collection("tasks").document()
@@ -158,10 +163,10 @@ class AdminDashboardViewModel : ViewModel() {
 
             batch.commit()
                 .addOnSuccessListener {
-                    _uiState.update { it.copy(successMessage = "Zadanie dodano dla wszystkich dzieci!") }
+                    _uiState.update { it.copy(successMessage = "Zadanie wysłane do wszystkich dzieci!") }
                 }
                 .addOnFailureListener { e ->
-                    _uiState.update { it.copy(error = "Błąd: ${e.message}") }
+                    _uiState.update { it.copy(error = "Błąd wysyłania: ${e.message}") }
                 }
 
         } else {
@@ -185,14 +190,30 @@ class AdminDashboardViewModel : ViewModel() {
         }
     }
 
-    fun approveTask(taskId: String) {
-        db.collection("tasks").document(taskId)
-            .update("status", "approved")
+    fun approveTask(taskId: String, childId: String, points: Int) {
+        val batch = db.batch()
+
+        val taskRef = db.collection("tasks").document(taskId)
+        batch.update(taskRef, "status", "approved")
+
+        if (childId.isNotEmpty()) {
+            val childRef = db.collection("users").document(childId)
+            batch.update(childRef, "points", FieldValue.increment(points.toLong()))
+        }
+
+        _uiState.update { it.copy(isLoading = true) }
+
+        batch.commit()
             .addOnSuccessListener {
-                _uiState.update { it.copy(successMessage = "Zadanie zatwierdzone! Punkty przyznane.") }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        successMessage = "Zatwierdzono! Dodano $points pkt."
+                    )
+                }
             }
             .addOnFailureListener { e ->
-                _uiState.update { it.copy(error = "Błąd: ${e.message}") }
+                _uiState.update { it.copy(isLoading = false, error = "Błąd transakcji: ${e.message}") }
             }
     }
 

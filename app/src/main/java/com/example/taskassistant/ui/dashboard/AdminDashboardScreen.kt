@@ -369,7 +369,7 @@ fun TaskCard(task: Task, viewModel: AdminDashboardViewModel) {
             if (task.status == "pending") {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = { viewModel.approveTask(task.id) },
+                    onClick = { viewModel.approveTask(task.id, task.assignedToId, task.points) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047))
                 ) {
@@ -385,7 +385,6 @@ fun AddTaskDialog(viewModel: AdminDashboardViewModel, onDismiss: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
     var title by remember { mutableStateOf("") }
     var points by remember { mutableStateOf("10") }
-
     var selectedChildId by remember { mutableStateOf("ALL") }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -398,7 +397,7 @@ fun AddTaskDialog(viewModel: AdminDashboardViewModel, onDismiss: () -> Unit) {
                 OutlinedTextField(value = points, onValueChange = { points = it }, label = { Text("Punkty") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Dla kogo?")
+                Text("Dla kogo?", fontWeight = FontWeight.Bold)
 
                 if (uiState.kidsList.isEmpty()) {
                     Text("Brak dzieci! Dodaj je w zakładce Dzieci.", color = Color.Red)
@@ -425,11 +424,11 @@ fun AddTaskDialog(viewModel: AdminDashboardViewModel, onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
-                        val assignedEmail = uiState.kidsList.find { it.id == selectedChildId }?.email ?: ""
+                        val assignedEmail = if (selectedChildId == "ALL") "Wszyscy" else uiState.kidsList.find { it.id == selectedChildId }?.email ?: ""
                         viewModel.addTask(title, points.toIntOrNull() ?: 0, selectedChildId, assignedEmail)
                         onDismiss()
                     },
-                    enabled = title.isNotBlank() && (selectedChildId.isNotBlank() || selectedChildId == "ALL")
+                    enabled = title.isNotBlank()
                 ) {
                     Text("Zapisz")
                 }
