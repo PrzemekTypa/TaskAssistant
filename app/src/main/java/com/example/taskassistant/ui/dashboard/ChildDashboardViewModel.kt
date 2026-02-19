@@ -1,13 +1,18 @@
 package com.example.taskassistant.ui.dashboard
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.taskassistant.storage.StorageHelper
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class ChildUiState(
     val tasks: List<Task> = emptyList(),
@@ -25,10 +30,10 @@ class ChildDashboardViewModel : ViewModel() {
 
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
+    private val messaging = FirebaseMessaging.getInstance()
     private val currentUserId = auth.currentUser?.uid
 
     private var currentParentId: String = ""
-
     private var totalEarnedPoints = 0
     private var totalSpentPoints = 0
 
@@ -118,58 +123,140 @@ class ChildDashboardViewModel : ViewModel() {
             .addSnapshotListener { value, error ->
                 if (error != null) return@addSnapshotListener
 
-                val spent = value?.documents?.sumOf { doc ->
-                    doc.getLong("cost")?.toInt() ?: 0
-                } ?: 0
+                val redemptions = value?.documents?.mapNotNull { doc ->
+                    Redemption(
+                        id = doc.id,
+                        childId = doc.getString("childId") ?: "",
+                        parentId = doc.getString("parentId") ?: "",
+                        rewardTitle = doc.getString("rewardTitle") ?: "",
+                        cost = doc.getLong("cost")?.toInt() ?: 0,
+                        status = doc.getString("status") ?: "pending",
+                        timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()
+                    )
+                } ?: emptyList()
 
-                Log.d("FIREBASE_LOG", "Suma wydatków: $spent")
-                totalSpentPoints = spent
+                totalSpentPoints = redemptions.filter { it.status == "delivered" }.sumOf { it.cost }
+
                 recalculatePoints()
             }
     }
 
     private fun recalculatePoints() {
-        val balance = totalEarnedPoints - totalSpentPoints
-        Log.d("FIREBASE_LOG", "Przeliczam punkty: $totalEarnedPoints - $totalSpentPoints = $balance")
         _uiState.update {
-            it.copy(userPoints = balance)
+            it.copy(userPoints = totalEarnedPoints - totalSpentPoints)
         }
-    }
-
-    fun redeemReward(reward: Reward) {
-        val userId = currentUserId ?: return
-
-        if (currentParentId.isEmpty()) {
-            _uiState.update { it.copy(error = "Błąd: Brak połączonego rodzica!") }
-            return
-        }
-
-        if (_uiState.value.userPoints < reward.cost) {
-            _uiState.update { it.copy(error = "Za mało punktów!") }
-            return
-        }
-
-        val redemptionData = hashMapOf(
-            "childId" to userId,
-            "parentId" to currentParentId,
-            "rewardTitle" to reward.title,
-            "cost" to reward.cost,
-            "status" to "pending",
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        db.collection("redemptions").add(redemptionData)
-            .addOnSuccessListener {
-                _uiState.update { it.copy(successMessage = "Kupiono: ${reward.title}!") }
-            }
-            .addOnFailureListener { e ->
-                _uiState.update { it.copy(error = "Błąd zakupu: ${e.message}") }
-            }
     }
 
     fun markTaskAsDone(taskId: String) {
+        _uiState.update { it.copy(isLoading = true) }
+
         db.collection("tasks").document(taskId)
             .update("status", "pending")
+            .addOnSuccessListener {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        successMessage = "✅ Zadanie wysłane do zatwierdzenia!"
+                    )
+                }
+                sendNotificationToParent("pending", taskId)
+            }
+            .addOnFailureListener { e ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Błąd: ${e.message}"
+                    )
+                }
+            }
+    }
+
+    fun submitTaskWithPhoto(taskId: String, photoUri: Uri) {
+        _uiState.update { it.copy(isLoading = true) }
+
+        StorageHelper.uploadTaskPhoto(
+            taskId,
+            photoUri,
+            onSuccess = { photoUrl ->
+                db.collection("tasks").document(taskId).update(
+                    mapOf(
+                        "status" to "pending",
+                        "photoUrl" to photoUrl,
+                        "submittedAt" to System.currentTimeMillis()
+                    )
+                ).addOnSuccessListener {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            successMessage = "✅ Zdjęcie wysłane! Czekamy na zatwierdzenie 📸"
+                        )
+                    }
+                    sendNotificationToParent("pending", taskId)
+                }.addOnFailureListener { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Błąd zapisu: ${e.message}"
+                        )
+                    }
+                }
+            },
+            onFailure = { exception ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Błąd uploadowania: ${exception.message}"
+                    )
+                }
+            }
+        )
+    }
+
+    fun redeemReward(reward: Reward) {
+        if (_uiState.value.userPoints < reward.cost) {
+            _uiState.update { it.copy(error = "Brakuje Ci punktów!") }
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = true) }
+
+        val redemption = Redemption(
+            childId = currentUserId ?: "",
+            parentId = currentParentId,
+            rewardTitle = reward.title,
+            cost = reward.cost,
+            status = "pending",
+            timestamp = System.currentTimeMillis()
+        )
+
+        db.collection("redemptions").add(redemption)
+            .addOnSuccessListener {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        successMessage = "🎉 Nagroda zarezerwowana! Czekaj na dostawę!"
+                    )
+                }
+                sendNotificationToParentRedemption(reward.title)
+            }
+            .addOnFailureListener { e ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Błąd: ${e.message}"
+                    )
+                }
+            }
+    }
+
+    private fun sendNotificationToParent(status: String, taskId: String) {
+        // Tutaj możesz wysłać FCM notification do rodzica
+        // Na razie to placeholder
+        Log.d("FIREBASE_LOG", "Notyfikacja do rodzica: Zadanie $taskId - $status")
+    }
+
+    private fun sendNotificationToParentRedemption(rewardTitle: String) {
+        Log.d("FIREBASE_LOG", "Notyfikacja do rodzica: Dziecko chce nagrodę $rewardTitle")
     }
 
     fun onMessageShown() {

@@ -23,6 +23,7 @@ import androidx.compose.runtime.collectAsState
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.LaunchedEffect
+import com.example.taskassistant.ui.camera.CameraScreen
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,16 +114,29 @@ fun ChildTasksTab(viewModel: ChildDashboardViewModel) {
                 items = uiState.tasks,
                 key = { task -> task.id }
             ) { task ->
-                ChildTaskCard(task, onDone = { viewModel.markTaskAsDone(task.id) })
+                ChildTaskCard(task, viewModel)
             }
         }
     }
 }
 
 @Composable
-fun ChildTaskCard(task: Task, onDone: () -> Unit) {
+fun ChildTaskCard(task: Task, viewModel: ChildDashboardViewModel) {
     val isPending = task.status == "pending"
     val isApproved = task.status == "approved"
+    var showCamera by remember { mutableStateOf(false) }
+
+    if (showCamera) {
+        CameraScreen(
+            taskId = task.id,
+            onPhotoCaptured = { photoUri ->
+                viewModel.submitTaskWithPhoto(task.id, photoUri)
+                showCamera = false
+            },
+            onDismiss = { showCamera = false }
+        )
+        return
+    }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -146,9 +160,9 @@ fun ChildTaskCard(task: Task, onDone: () -> Unit) {
 
             when {
                 isApproved -> Icon(Icons.Default.CheckCircle, "Gotowe", tint = Color(0xFF43A047))
-                isPending -> Text("Czeka na sprawdzenie", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                else -> Button(onClick = onDone) {
-                    Text("Zrobione")
+                isPending -> Text("⏳ Czeka", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                else -> Button(onClick = { showCamera = true }) {
+                    Text("📸 Zrób zdjęcie")
                 }
             }
         }
