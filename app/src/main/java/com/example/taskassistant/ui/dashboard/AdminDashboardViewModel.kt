@@ -73,21 +73,34 @@ class AdminDashboardViewModel : ViewModel() {
                 _uiState.update { it.copy(tasksList = tasks) }
             }
 
-        rewardsListener = db.collection("rewards")
+        tasksListener = db.collection("tasks")
             .whereEqualTo("parentId", currentUserId)
             .addSnapshotListener { value, error ->
                 if (error != null) return@addSnapshotListener
 
-                val rewards = value?.documents?.map { doc ->
-                    Reward(
+                val tasks = value?.documents?.map { doc ->
+                    Task(
                         id = doc.id,
                         title = doc.getString("title") ?: "",
-                        cost = doc.getLong("cost")?.toInt() ?: 0,
-                        parentId = doc.getString("parentId") ?: ""
+                        points = doc.getLong("points")?.toInt() ?: 0,
+                        status = doc.getString("status") ?: "todo",
+                        assignedToId = doc.getString("assignedToId") ?: "",
+                        assignedToEmail = doc.getString("assignedToEmail") ?: "",
+                        photoUrl = doc.getString("photoUrl") ?: "",
+                        submittedAt = doc.getLong("submittedAt") ?: 0L
                     )
                 } ?: emptyList()
+                val sortedTasks = tasks.sortedWith(
+                    compareBy<Task> {
+                        when(it.status) {
+                            "pending" -> 0
+                            "todo" -> 1
+                            else -> 2
+                        }
+                    }.thenByDescending { it.submittedAt }
+                )
 
-                _uiState.update { it.copy(rewardsList = rewards) }
+                _uiState.update { it.copy(tasksList = sortedTasks) }
             }
 
         redemptionsListener = db.collection("redemptions")
