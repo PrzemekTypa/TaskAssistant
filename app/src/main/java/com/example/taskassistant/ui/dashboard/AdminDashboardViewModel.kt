@@ -66,30 +66,12 @@ class AdminDashboardViewModel : ViewModel() {
                         points = doc.getLong("points")?.toInt() ?: 0,
                         status = doc.getString("status") ?: "todo",
                         assignedToId = doc.getString("assignedToId") ?: "",
-                        assignedToEmail = doc.getString("assignedToEmail") ?: ""
-                    )
-                } ?: emptyList()
-
-                _uiState.update { it.copy(tasksList = tasks) }
-            }
-
-        tasksListener = db.collection("tasks")
-            .whereEqualTo("parentId", currentUserId)
-            .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
-
-                val tasks = value?.documents?.map { doc ->
-                    Task(
-                        id = doc.id,
-                        title = doc.getString("title") ?: "",
-                        points = doc.getLong("points")?.toInt() ?: 0,
-                        status = doc.getString("status") ?: "todo",
-                        assignedToId = doc.getString("assignedToId") ?: "",
                         assignedToEmail = doc.getString("assignedToEmail") ?: "",
                         photoUrl = doc.getString("photoUrl") ?: "",
                         submittedAt = doc.getLong("submittedAt") ?: 0L
                     )
                 } ?: emptyList()
+
                 val sortedTasks = tasks.sortedWith(
                     compareBy<Task> {
                         when(it.status) {
@@ -101,6 +83,23 @@ class AdminDashboardViewModel : ViewModel() {
                 )
 
                 _uiState.update { it.copy(tasksList = sortedTasks) }
+            }
+
+        rewardsListener = db.collection("rewards")
+            .whereEqualTo("parentId", currentUserId)
+            .addSnapshotListener { value, error ->
+                if (error != null) return@addSnapshotListener
+
+                val rewards = value?.documents?.map { doc ->
+                    Reward(
+                        id = doc.id,
+                        title = doc.getString("title") ?: "",
+                        cost = doc.getLong("cost")?.toInt() ?: 0,
+                        parentId = doc.getString("parentId") ?: ""
+                    )
+                } ?: emptyList()
+
+                _uiState.update { it.copy(rewardsList = rewards) }
             }
 
         redemptionsListener = db.collection("redemptions")
@@ -267,19 +266,11 @@ class AdminDashboardViewModel : ViewModel() {
     }
 
     fun approveTask(taskId: String, childId: String, points: Int) {
-        val batch = db.batch()
-
         val taskRef = db.collection("tasks").document(taskId)
-        batch.update(taskRef, "status", "approved")
-
-        if (childId.isNotEmpty()) {
-            val childRef = db.collection("users").document(childId)
-            batch.update(childRef, "points", FieldValue.increment(points.toLong()))
-        }
 
         _uiState.update { it.copy(isLoading = true) }
 
-        batch.commit()
+        taskRef.update("status", "approved")
             .addOnSuccessListener {
                 _uiState.update {
                     it.copy(
@@ -289,7 +280,9 @@ class AdminDashboardViewModel : ViewModel() {
                 }
             }
             .addOnFailureListener { e ->
-                _uiState.update { it.copy(isLoading = false, error = "Błąd transakcji: ${e.message}") }
+                _uiState.update {
+                    it.copy(isLoading = false, error = "Błąd: ${e.message}")
+                }
             }
     }
 
@@ -339,4 +332,5 @@ class AdminDashboardViewModel : ViewModel() {
                 _uiState.update { it.copy(error = "Błąd: ${e.message}") }
             }
     }
+
 }

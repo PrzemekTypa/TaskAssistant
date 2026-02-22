@@ -3,16 +3,15 @@ package com.example.taskassistant.ui.dashboard
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.taskassistant.storage.StorageHelper
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 data class ChildUiState(
     val tasks: List<Task> = emptyList(),
@@ -31,23 +30,40 @@ class ChildDashboardViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
     private val messaging = FirebaseMessaging.getInstance()
-    private val currentUserId = auth.currentUser?.uid
+    private var currentUserId: String? = null
 
     private var currentParentId: String = ""
     private var totalEarnedPoints = 0
     private var totalSpentPoints = 0
 
-    init {
-        Log.d("FIREBASE_LOG", "Init ViewModelu Dziecka. UserID: $currentUserId")
+    private var userListener: ListenerRegistration? = null
+    private var rewardsListener: ListenerRegistration? = null
+    private var tasksListener: ListenerRegistration? = null
+    private var redemptionsListener: ListenerRegistration? = null
+
+    fun startListening() {
+        currentUserId = auth.currentUser?.uid
+        if (currentUserId == null) return
+
+        stopListening()
+
+        Log.d("FIREBASE_LOG", "Start nasłuchu Dziecka. UserID: $currentUserId")
         startListeningToUserAndRewards()
         startListeningToTasks()
         startListeningToRedemptions()
     }
 
-    private fun startListeningToUserAndRewards() {
-        if (currentUserId == null) return
+    fun stopListening() {
+        userListener?.remove()
+        rewardsListener?.remove()
+        tasksListener?.remove()
+        redemptionsListener?.remove()
+    }
 
-        db.collection("users").document(currentUserId)
+    private fun startListeningToUserAndRewards() {
+        val userId = currentUserId ?: return
+
+        userListener = db.collection("users").document(userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("FIREBASE_LOG", "Błąd nasłuchu usera: ${error.message}")
@@ -65,7 +81,8 @@ class ChildDashboardViewModel : ViewModel() {
     }
 
     private fun startListeningToRewards(parentId: String) {
-        db.collection("rewards")
+        rewardsListener?.remove()
+        rewardsListener = db.collection("rewards")
             .whereEqualTo("parentId", parentId)
             .addSnapshotListener { value, error ->
                 if (error != null) return@addSnapshotListener
@@ -85,10 +102,10 @@ class ChildDashboardViewModel : ViewModel() {
     }
 
     private fun startListeningToTasks() {
-        if (currentUserId == null) return
+        val userId = currentUserId ?: return
 
-        db.collection("tasks")
-            .whereEqualTo("assignedToId", currentUserId)
+        tasksListener = db.collection("tasks")
+            .whereEqualTo("assignedToId", userId)
             .addSnapshotListener { value, error ->
                 if (error != null) {
                     Log.e("FIREBASE_LOG", "Błąd zadań: ${error.message}")
@@ -116,10 +133,10 @@ class ChildDashboardViewModel : ViewModel() {
     }
 
     private fun startListeningToRedemptions() {
-        if (currentUserId == null) return
+        val userId = currentUserId ?: return
 
-        db.collection("redemptions")
-            .whereEqualTo("childId", currentUserId)
+        redemptionsListener = db.collection("redemptions")
+            .whereEqualTo("childId", userId)
             .addSnapshotListener { value, error ->
                 if (error != null) return@addSnapshotListener
 
@@ -135,7 +152,9 @@ class ChildDashboardViewModel : ViewModel() {
                     )
                 } ?: emptyList()
 
-                totalSpentPoints = redemptions.filter { it.status == "delivered" }.sumOf { it.cost }
+                totalSpentPoints = redemptions
+                    .filter { it.status == "pending" || it.status == "completed" }
+                    .sumOf { it.cost }
 
                 recalculatePoints()
             }
@@ -151,7 +170,12 @@ class ChildDashboardViewModel : ViewModel() {
         _uiState.update { it.copy(isLoading = true) }
 
         db.collection("tasks").document(taskId)
-            .update("status", "pending")
+            .update(
+                mapOf(
+                    "status" to "pending",
+                    "submittedAt" to System.currentTimeMillis()
+                )
+            )
             .addOnSuccessListener {
                 _uiState.update {
                     it.copy(
@@ -159,7 +183,7 @@ class ChildDashboardViewModel : ViewModel() {
                         successMessage = "✅ Zadanie wysłane do zatwierdzenia!"
                     )
                 }
-                sendNotificationToParent("pending", taskId)
+                sendNotificationToParent(taskId)
             }
             .addOnFailureListener { e ->
                 _uiState.update {
@@ -191,7 +215,7 @@ class ChildDashboardViewModel : ViewModel() {
                             successMessage = "✅ Zdjęcie wysłane! Czekamy na zatwierdzenie 📸"
                         )
                     }
-                    sendNotificationToParent("pending", taskId)
+                    sendNotificationToParent(taskId)
                 }.addOnFailureListener { e ->
                     _uiState.update {
                         it.copy(
@@ -249,10 +273,8 @@ class ChildDashboardViewModel : ViewModel() {
             }
     }
 
-    private fun sendNotificationToParent(status: String, taskId: String) {
-        // Tutaj możesz wysłać FCM notification do rodzica
-        // Na razie to placeholder
-        Log.d("FIREBASE_LOG", "Notyfikacja do rodzica: Zadanie $taskId - $status")
+    private fun sendNotificationToParent(taskId: String) {
+        Log.d("FIREBASE_LOG", "Notyfikacja do rodzica: Zadanie $taskId czeka na zatwierdzenie (pending)")
     }
 
     private fun sendNotificationToParentRedemption(rewardTitle: String) {
@@ -261,5 +283,10 @@ class ChildDashboardViewModel : ViewModel() {
 
     fun onMessageShown() {
         _uiState.update { it.copy(error = null, successMessage = null) }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopListening()
     }
 }

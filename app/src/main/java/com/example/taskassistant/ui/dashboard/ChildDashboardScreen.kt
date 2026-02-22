@@ -37,6 +37,10 @@ fun ChildDashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        viewModel.startListening()
+    }
+
     LaunchedEffect(uiState.error, uiState.successMessage) {
         uiState.error?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
