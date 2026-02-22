@@ -28,6 +28,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -348,6 +353,8 @@ fun TaskCard(task: Task, viewModel: AdminDashboardViewModel) {
         else -> Color(0xFFFFB74D)
     }
 
+    var showImageDialog by remember { mutableStateOf(false) }
+
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
@@ -362,6 +369,20 @@ fun TaskCard(task: Task, viewModel: AdminDashboardViewModel) {
                     Text(task.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                     Text("Dla: ${task.assignedToEmail}", style = MaterialTheme.typography.bodySmall)
                     Text("${task.points} pkt", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+
+                    if (task.photoUrl.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Dowód wykonania:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        AsyncImage(
+                            model = task.photoUrl,
+                            contentDescription = "Dowód wykonania zadania",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { showImageDialog = true }
+                        )
+                    }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -389,6 +410,37 @@ fun TaskCard(task: Task, viewModel: AdminDashboardViewModel) {
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047))
                 ) {
                     Text("Zatwierdź i daj punkty")
+                }
+            }
+        }
+    }
+
+    if (showImageDialog && task.photoUrl.isNotEmpty()) {
+        Dialog(onDismissRequest = { showImageDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Zdjęcie zadania", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AsyncImage(
+                        model = task.photoUrl,
+                        contentDescription = "Powiększone zdjęcie",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { showImageDialog = false }) {
+                        Text("Zamknij")
+                    }
                 }
             }
         }
