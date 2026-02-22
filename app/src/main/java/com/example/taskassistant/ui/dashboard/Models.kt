@@ -7,7 +7,9 @@ data class Task(
     val points: Int = 0,
     val status: String = "todo", // todo, pending, approved
     val assignedToId: String = "",
-    val assignedToEmail: String = ""
+    val assignedToEmail: String = "",
+    val photoUrl: String = "",
+    val submittedAt: Long = 0
 )
 
 

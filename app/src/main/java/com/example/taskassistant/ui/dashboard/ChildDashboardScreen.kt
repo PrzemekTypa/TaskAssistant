@@ -24,6 +24,8 @@ import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.LaunchedEffect
 import com.example.taskassistant.ui.camera.CameraScreen
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,6 +98,20 @@ fun ChildDashboardScreen(
 @Composable
 fun ChildTasksTab(viewModel: ChildDashboardViewModel) {
     val uiState by viewModel.uiState.collectAsState()
+    var cameraTaskId by remember { mutableStateOf<String?>(null) }
+
+
+    if (cameraTaskId != null) {
+        CameraScreen(
+            taskId = cameraTaskId!!,
+            onPhotoCaptured = { photoUri ->
+                viewModel.submitTaskWithPhoto(cameraTaskId!!, photoUri)
+                cameraTaskId = null
+            },
+            onDismiss = { cameraTaskId = null }
+        )
+        return
+    }
 
     if (uiState.tasks.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -114,29 +130,22 @@ fun ChildTasksTab(viewModel: ChildDashboardViewModel) {
                 items = uiState.tasks,
                 key = { task -> task.id }
             ) { task ->
-                ChildTaskCard(task, viewModel)
+                ChildTaskCard(
+                    task = task,
+                    onOpenCamera = { taskId -> cameraTaskId = taskId }
+                )
             }
         }
     }
 }
 
 @Composable
-fun ChildTaskCard(task: Task, viewModel: ChildDashboardViewModel) {
+fun ChildTaskCard(
+    task: Task,
+    onOpenCamera: (String) -> Unit
+) {
     val isPending = task.status == "pending"
     val isApproved = task.status == "approved"
-    var showCamera by remember { mutableStateOf(false) }
-
-    if (showCamera) {
-        CameraScreen(
-            taskId = task.id,
-            onPhotoCaptured = { photoUri ->
-                viewModel.submitTaskWithPhoto(task.id, photoUri)
-                showCamera = false
-            },
-            onDismiss = { showCamera = false }
-        )
-        return
-    }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -161,7 +170,7 @@ fun ChildTaskCard(task: Task, viewModel: ChildDashboardViewModel) {
             when {
                 isApproved -> Icon(Icons.Default.CheckCircle, "Gotowe", tint = Color(0xFF43A047))
                 isPending -> Text("⏳ Czeka", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                else -> Button(onClick = { showCamera = true }) {
+                else -> Button(onClick = { onOpenCamera(task.id) }) {
                     Text("📸 Zrób zdjęcie")
                 }
             }
