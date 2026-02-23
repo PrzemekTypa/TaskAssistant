@@ -4,10 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.taskassistant.ui.login.LoginScreen
 import com.example.taskassistant.ui.dashboard.AdminDashboardScreen
 import com.example.taskassistant.ui.dashboard.ChildDashboardScreen
@@ -22,46 +26,51 @@ class MainActivity : ComponentActivity() {
         setContent {
             TaskAssistantTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    var currentScreen by remember { mutableStateOf("login") }
+                    val mainViewModel: MainViewModel = viewModel()
+                    val currentScreen by mainViewModel.currentScreen.collectAsState()
 
                     when (currentScreen) {
-                        "login" -> {
+                        AppScreen.LOADING -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                        AppScreen.LOGIN -> {
                             LoginScreen(
                                 onLoginSuccess = {
-                                    currentScreen = "admin_dashboard"
+                                    mainViewModel.checkUserSession()
                                 },
                                 onNavigateToRegister = {
-                                    currentScreen = "register"
+                                    mainViewModel.navigateTo(AppScreen.REGISTER)
                                 },
                                 onNavigateToChildDashboard = {
-                                    currentScreen = "child_dashboard"
+                                    mainViewModel.checkUserSession()
                                 }
-
                             )
                         }
-                        "register" -> {
+                        AppScreen.REGISTER -> {
                             RegisterScreen(
                                 onRegisterSuccess = {
-                                    currentScreen = "login"
+                                    mainViewModel.navigateTo(AppScreen.LOGIN)
                                 },
                                 onBackToLogin = {
-                                    currentScreen = "login"
+                                    mainViewModel.navigateTo(AppScreen.LOGIN)
                                 }
                             )
                         }
-                        "admin_dashboard" -> {
+                        AppScreen.ADMIN_DASHBOARD -> {
                             AdminDashboardScreen(
                                 onLogout = {
                                     FirebaseAuth.getInstance().signOut()
-                                    currentScreen = "login"
+                                    mainViewModel.checkUserSession()
                                 }
                             )
                         }
-                        "child_dashboard" -> {
+                        AppScreen.CHILD_DASHBOARD -> {
                             ChildDashboardScreen(
                                 onLogout = {
                                     FirebaseAuth.getInstance().signOut()
-                                    currentScreen = "login"
+                                    mainViewModel.checkUserSession()
                                 }
                             )
                         }
