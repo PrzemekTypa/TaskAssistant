@@ -19,7 +19,8 @@ data class ChildUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val userPoints: Int = 0,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val pendingParentId: String? = null
 )
 
 class ChildDashboardViewModel : ViewModel() {
@@ -65,13 +66,12 @@ class ChildDashboardViewModel : ViewModel() {
 
         userListener = db.collection("users").document(userId)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("FIREBASE_LOG", "Błąd nasłuchu usera: ${error.message}")
-                    return@addSnapshotListener
-                }
+                if (error != null) return@addSnapshotListener
 
                 val parentId = snapshot?.getString("parentId")
-                Log.d("FIREBASE_LOG", "Znaleziono ParentID: $parentId")
+                val pendingParentId = snapshot?.getString("pendingParentId")
+
+                _uiState.update { it.copy(pendingParentId = pendingParentId) }
 
                 if (!parentId.isNullOrEmpty()) {
                     currentParentId = parentId
@@ -279,6 +279,30 @@ class ChildDashboardViewModel : ViewModel() {
 
     private fun sendNotificationToParentRedemption(rewardTitle: String) {
         Log.d("FIREBASE_LOG", "Notyfikacja do rodzica: Dziecko chce nagrodę $rewardTitle")
+    }
+
+    fun acceptParentInvite() {
+        val userId = currentUserId ?: return
+        val pendingId = _uiState.value.pendingParentId ?: return
+
+        _uiState.update { it.copy(isLoading = true) }
+
+        val updates = mapOf(
+            "parentId" to pendingId,
+            "pendingParentId" to null
+        )
+
+        db.collection("users").document(userId)
+            .update(updates)
+            .addOnSuccessListener {
+                _uiState.update { it.copy(isLoading = false, successMessage = "Połączono z kontem rodzica!") }
+                startListeningToRewards(pendingId)
+            }
+    }
+
+    fun rejectParentInvite() {
+        val userId = currentUserId ?: return
+        db.collection("users").document(userId).update("pendingParentId", null)
     }
 
     fun onMessageShown() {
