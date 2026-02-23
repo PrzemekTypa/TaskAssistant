@@ -76,28 +76,35 @@ class ChildDashboardViewModel : ViewModel() {
                 if (!parentId.isNullOrEmpty()) {
                     currentParentId = parentId
                     startListeningToRewards(parentId)
+                } else {
+                    currentParentId = ""
+                    startListeningToRewards(null)
                 }
             }
     }
 
-    private fun startListeningToRewards(parentId: String) {
+    fun startListeningToRewards(parentId: String?) {
         rewardsListener?.remove()
+
+        if (parentId.isNullOrEmpty()) {
+            _uiState.update { it.copy(rewards = emptyList()) }
+            return
+        }
+
         rewardsListener = db.collection("rewards")
             .whereEqualTo("parentId", parentId)
-            .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    _uiState.update { it.copy(error = "Błąd pobierania nagród: ${e.message}") }
+                    return@addSnapshotListener
+                }
 
-                val rewardsList = value?.documents?.mapNotNull { doc ->
-                    Reward(
-                        id = doc.id,
-                        title = doc.getString("title") ?: "",
-                        cost = doc.getLong("cost")?.toInt() ?: 0,
-                        parentId = doc.getString("parentId") ?: ""
-                    )
-                } ?: emptyList()
-
-                Log.d("FIREBASE_LOG", "Pobrano nagrody: ${rewardsList.size}")
-                _uiState.update { it.copy(rewards = rewardsList) }
+                if (snapshot != null) {
+                    val rewardsList = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Reward::class.java)?.copy(id = doc.id)
+                    }
+                    _uiState.update { it.copy(rewards = rewardsList) }
+                }
             }
     }
 
