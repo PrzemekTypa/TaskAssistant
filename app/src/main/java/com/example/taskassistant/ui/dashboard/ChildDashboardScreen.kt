@@ -93,7 +93,7 @@ fun ChildDashboardScreen(
             when (selectedTab) {
                 0 -> ChildTasksTab(viewModel)
                 1 -> ChildRewardsTab(viewModel)
-                2 -> ChildProfileTab(onLogout, currentUser?.email ?: "")
+                2 -> ChildProfileTab(onLogout,currentUser?.email ?: "", uiState, viewModel)
             }
         }
     }
@@ -261,7 +261,12 @@ fun ChildRewardsTab(viewModel: ChildDashboardViewModel) {
 }
 
 @Composable
-fun ChildProfileTab(onLogout: () -> Unit, email: String) {
+fun ChildProfileTab(
+    onLogout: () -> Unit,
+    email: String,
+    uiState: ChildUiState,
+    viewModel: ChildDashboardViewModel
+) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -271,6 +276,27 @@ fun ChildProfileTab(onLogout: () -> Unit, email: String) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(email, style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(32.dp))
+
+        if (uiState.pendingParentId != null) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Masz zaproszenie do połączenia z kontem Rodzica!", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = { viewModel.acceptParentInvite() }) {
+                            Text("Akceptuj")
+                        }
+                        OutlinedButton(onClick = { viewModel.rejectParentInvite() }) {
+                            Text("Odrzuć")
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         Button(
             onClick = onLogout,

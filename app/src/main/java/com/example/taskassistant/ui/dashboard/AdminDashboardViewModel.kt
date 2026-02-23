@@ -195,18 +195,18 @@ class AdminDashboardViewModel : ViewModel() {
 
     private fun linkChildToParent(childId: String, currentUserId: String) {
         db.collection("users").document(childId)
-            .update("parentId", currentUserId)
+            .update("pendingParentId", currentUserId)
             .addOnSuccessListener {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        successMessage = "Dodano dziecko pomyślnie!",
+                        successMessage = "Wysłano zaproszenie do dziecka!",
                         addChildEmail = ""
                     )
                 }
             }
             .addOnFailureListener { e ->
-                _uiState.update { it.copy(isLoading = false, error = "Błąd łączenia: ${e.message}") }
+                _uiState.update { it.copy(isLoading = false, error = "Błąd wysyłania: ${e.message}") }
             }
     }
 
