@@ -33,6 +33,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,7 +103,9 @@ fun AdminDashboardScreen(
                 0 -> TasksTab(viewModel)
                 1 -> KidsTab(viewModel)
                 2 -> RewardsTab(viewModel)
-                3 -> SettingsTab(onLogout = {
+                3 -> SettingsTab(
+                    uiState = uiState,
+                    onLogout = {
                     viewModel.stopListening()
                     onLogout()
                 })
@@ -326,21 +331,117 @@ fun RewardsTab(viewModel: AdminDashboardViewModel) {
 }
 
 @Composable
-fun SettingsTab(onLogout: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Button(
-            onClick = onLogout,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+fun SettingsTab(
+    uiState: AdminUiState,
+    onLogout: () -> Unit
+) {
+    var showHistoryDialog by remember { mutableStateOf(false) }
+
+    val kidsMap = uiState.kidsList.associateBy({ it.id }, { it.email })
+
+    if (showHistoryDialog) {
+        Dialog(
+            onDismissRequest = { showHistoryDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Wyloguj się")
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Historia transakcji dzieci", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        IconButton(onClick = { showHistoryDialog = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Zamknij")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (uiState.redemptionsList.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Brak historii punktów.", color = Color.Gray)
+                        }
+                    } else {
+                        LazyColumn {
+                            items(uiState.redemptionsList) { redemption ->
+                                val sdf = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm", java.util.Locale.getDefault())
+                                val dateString = sdf.format(java.util.Date(redemption.timestamp))
+
+                                val childEmail = kidsMap[redemption.childId] ?: "Nieznane dziecko"
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(text = redemption.rewardTitle, fontWeight = FontWeight.Bold)
+                                            Text(text = "Dziecko: $childEmail", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                                            Text(text = dateString, fontSize = 12.sp, color = Color.Gray)
+
+                                            val statusText = if (redemption.status == "pending") "Oczekuje na wydanie" else "Wydane"
+                                            val statusColor = if (redemption.status == "pending") Color(0xFFFFA500) else Color(0xFF4CAF50)
+                                            Text(text = statusText, fontSize = 12.sp, color = statusColor, fontWeight = FontWeight.SemiBold)
+                                        }
+                                        Text(
+                                            text = "-${redemption.cost} pkt",
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        item {
+            Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        item {
+            OutlinedButton(
+                onClick = { showHistoryDialog = true },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            ) {
+                Icon(Icons.Default.List, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Zobacz historię transakcji dzieci")
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(32.dp))
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Wyloguj się")
+            }
         }
     }
 }

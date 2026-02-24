@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 data class ChildUiState(
     val tasks: List<Task> = emptyList(),
     val rewards: List<Reward> = emptyList(),
+    val redemptionsHistory: List<Redemption> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val userPoints: Int = 0,
@@ -41,6 +42,8 @@ class ChildDashboardViewModel : ViewModel() {
     private var rewardsListener: ListenerRegistration? = null
     private var tasksListener: ListenerRegistration? = null
     private var redemptionsListener: ListenerRegistration? = null
+
+    private var historyListener: ListenerRegistration? = null
 
     fun startListening() {
         currentUserId = auth.currentUser?.uid
@@ -163,7 +166,10 @@ class ChildDashboardViewModel : ViewModel() {
                     .filter { it.status == "pending" || it.status == "completed" }
                     .sumOf { it.cost }
 
+                val sortedHistory = redemptions.sortedByDescending { it.timestamp }
+
                 recalculatePoints()
+                _uiState.update { it.copy(redemptionsHistory = sortedHistory) }
             }
     }
 
