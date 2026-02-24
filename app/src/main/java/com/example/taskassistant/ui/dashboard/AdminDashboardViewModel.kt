@@ -21,14 +21,13 @@ data class AdminUiState(
     val successMessage: String? = null
 )
 
-class AdminDashboardViewModel : ViewModel() {
+class AdminDashboardViewModel(
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AdminUiState())
     val uiState: StateFlow<AdminUiState> = _uiState.asStateFlow()
-
-    private val db = FirebaseFirestore.getInstance()
-    private val auth = FirebaseAuth.getInstance()
-
     private var kidsListener: ListenerRegistration? = null
     private var tasksListener: ListenerRegistration? = null
     private var rewardsListener: ListenerRegistration? = null
