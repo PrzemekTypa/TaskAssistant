@@ -103,7 +103,6 @@ class AdminDashboardViewModel(
 
         redemptionsListener = db.collection("redemptions")
             .whereEqualTo("parentId", currentUserId)
-            .whereEqualTo("status", "pending")
             .addSnapshotListener { value, error ->
                 if (error != null) return@addSnapshotListener
 
@@ -114,11 +113,14 @@ class AdminDashboardViewModel(
                         parentId = doc.getString("parentId") ?: "",
                         rewardTitle = doc.getString("rewardTitle") ?: "",
                         cost = doc.getLong("cost")?.toInt() ?: 0,
-                        status = doc.getString("status") ?: "pending"
+                        status = doc.getString("status") ?: "pending",
+                        timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()
                     )
                 } ?: emptyList()
 
-                _uiState.update { it.copy(redemptionsList = purchases) }
+                val sortedHistory = purchases.sortedByDescending { it.timestamp }
+
+                _uiState.update { it.copy(redemptionsList = sortedHistory) }
             }
     }
 

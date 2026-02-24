@@ -21,11 +21,21 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 import android.widget.Toast
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.LaunchedEffect
 import com.example.taskassistant.ui.camera.CameraScreen
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.List
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,7 +63,7 @@ fun ChildDashboardScreen(
     }
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Moje Zadania", "Nagrody", "Profil")
+    val tabs = listOf("Moje Zadania", "Nagrody", "Ustawienia")
 
 
     val currentUser = FirebaseAuth.getInstance().currentUser
@@ -81,7 +91,7 @@ fun ChildDashboardScreen(
                             when (title) {
                                 "Moje Zadania" -> Icon(Icons.Default.Home, contentDescription = null)
                                 "Nagrody" -> Icon(Icons.Default.Favorite, contentDescription = null)
-                                "Profil" -> Icon(Icons.Default.Face, contentDescription = null)
+                                "Ustawienia" -> Icon(Icons.Default.Settings, contentDescription = null)
                             }
                         }
                     )
@@ -93,7 +103,7 @@ fun ChildDashboardScreen(
             when (selectedTab) {
                 0 -> ChildTasksTab(viewModel)
                 1 -> ChildRewardsTab(viewModel)
-                2 -> ChildProfileTab(onLogout,currentUser?.email ?: "", uiState, viewModel)
+                2 -> ChildSettingsTab(onLogout,currentUser?.email ?: "", uiState, viewModel)
             }
         }
     }
@@ -261,50 +271,142 @@ fun ChildRewardsTab(viewModel: ChildDashboardViewModel) {
 }
 
 @Composable
-fun ChildProfileTab(
+fun ChildSettingsTab(
     onLogout: () -> Unit,
     email: String,
     uiState: ChildUiState,
     viewModel: ChildDashboardViewModel
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(Icons.Default.Face, contentDescription = null, modifier = Modifier.size(100.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(email, style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(32.dp))
-
-        if (uiState.pendingParentId != null) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
+    var showHistoryDialog by remember { mutableStateOf(false) }
+    if (showHistoryDialog) {
+        Dialog(
+            onDismissRequest = { showHistoryDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.background
             ) {
-                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Masz zaproszenie do połączenia z kontem Rodzica!", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
-                        Button(onClick = { viewModel.acceptParentInvite() }) {
-                            Text("Akceptuj")
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Historia transakcji", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        IconButton(onClick = { showHistoryDialog = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Zamknij")
                         }
-                        OutlinedButton(onClick = { viewModel.rejectParentInvite() }) {
-                            Text("Odrzuć")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (uiState.redemptionsHistory.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Brak historii punktów.", color = Color.Gray)
+                        }
+                    } else {
+                        LazyColumn {
+                            items(uiState.redemptionsHistory) { redemption ->
+                                val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                                val dateString = sdf.format(Date(redemption.timestamp))
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(text = redemption.rewardTitle, fontWeight = FontWeight.Bold)
+                                            Text(text = dateString, fontSize = 12.sp, color = Color.Gray)
+
+                                            val statusText = if (redemption.status == "pending") "Oczekuje na wydanie" else "Wydane"
+                                            val statusColor = if (redemption.status == "pending") Color(0xFFFFA500) else Color(0xFF4CAF50)
+                                            Text(text = statusText, fontSize = 12.sp, color = statusColor, fontWeight = FontWeight.SemiBold)
+                                        }
+                                        Text(
+                                            text = "-${redemption.cost} pkt",
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        item {
+            Icon(androidx.compose.material.icons.Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
+            Text(email, style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
-        Button(
-            onClick = onLogout,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Wyloguj się")
+        if (uiState.pendingParentId != null) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Masz zaproszenie do połączenia z kontem Rodzica!", fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+                            Button(onClick = { viewModel.acceptParentInvite() }) {
+                                Text("Akceptuj")
+                            }
+                            OutlinedButton(onClick = { viewModel.rejectParentInvite() }) {
+                                Text("Odrzuć")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            OutlinedButton(
+                onClick = { showHistoryDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Icon(Icons.Default.List, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Zobacz historię transakcji")
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(32.dp))
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Wyloguj się")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
