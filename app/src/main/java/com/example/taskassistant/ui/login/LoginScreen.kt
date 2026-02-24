@@ -149,10 +149,24 @@ fun LoginScreen(
                 )
             }
 
+            if (uiState.resetPasswordMessage != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = uiState.resetPasswordMessage!!,
+                    color = Color(0xFF4CAF50),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 8.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                TextButton(onClick = { }) {
+                TextButton(onClick = {
+                    focusManager.clearFocus()
+                    viewModel.resetPassword()
+                }) {
                     Text("Zapomniałem hasła", color = MaterialTheme.colorScheme.secondary)
                 }
             }

@@ -16,7 +16,8 @@ data class LoginUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val isLoginSuccessful: Boolean = false,
-    val userRole: String? = null
+    val userRole: String? = null,
+    val resetPasswordMessage: String? = null
 )
 
 class LoginViewModel(
@@ -28,7 +29,7 @@ class LoginViewModel(
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     fun onEmailChange(newValue: String) {
-        _uiState.update { it.copy(email = newValue, error = null) }
+        _uiState.update { it.copy(email = newValue, error = null, resetPasswordMessage = null) }
     }
 
     fun onPasswordChange(newValue: String) {
@@ -43,15 +44,25 @@ class LoginViewModel(
             return
         }
 
-        _uiState.update { it.copy(isLoading = true, error = null) }
+        _uiState.update { it.copy(isLoading = true, error = null, resetPasswordMessage = null) }
 
         viewModelScope.launch {
             auth.signInWithEmailAndPassword(currentState.email, currentState.password)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        val userId = auth.currentUser?.uid
-                        if (userId != null) {
-                            fetchUserRole(userId)
+                        val user = auth.currentUser
+                        if (user != null) {
+                            if (user.isEmailVerified) {
+                                fetchUserRole(user.uid)
+                            } else {
+                                auth.signOut()
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        error = "Potwierdź swój adres e-mail, klikając w link wysłany na Twoją skrzynkę."
+                                    )
+                                }
+                            }
                         } else {
                             _uiState.update { it.copy(isLoading = false, error = "Błąd pobierania ID użytkownika") }
                         }
@@ -65,6 +76,34 @@ class LoginViewModel(
                     }
                 }
         }
+    }
+
+    fun resetPassword() {
+        val email = _uiState.value.email
+        if (email.isBlank()) {
+            _uiState.update { it.copy(error = "Wpisz swój e-mail wyżej, aby zresetować hasło") }
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = true, error = null, resetPasswordMessage = null) }
+
+        auth.sendPasswordResetEmail(email)
+            .addOnSuccessListener {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        resetPasswordMessage = "Wysłano link do resetu hasła na e-mail: $email"
+                    )
+                }
+            }
+            .addOnFailureListener { e ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = e.localizedMessage ?: "Błąd podczas wysyłania linku"
+                    )
+                }
+            }
     }
 
     private fun fetchUserRole(userId: String) {
