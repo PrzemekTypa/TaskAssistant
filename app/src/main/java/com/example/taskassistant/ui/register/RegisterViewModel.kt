@@ -82,8 +82,15 @@ class RegisterViewModel : ViewModel() {
 
         db.collection("users").document(userId).set(userMap)
             .addOnSuccessListener {
-                auth.signOut()
-                _uiState.update { it.copy(isLoading = false, isRegistrationSuccessful = true) }
+                auth.currentUser?.sendEmailVerification()?.addOnCompleteListener {
+                    auth.signOut()
+                    _uiState.update { state ->
+                        state.copy(
+                            isLoading = false,
+                            isRegistrationSuccessful = true
+                        )
+                    }
+                }
             }
             .addOnFailureListener { e ->
                 _uiState.update { it.copy(isLoading = false, error = "Błąd zapisu roli: ${e.message}") }
