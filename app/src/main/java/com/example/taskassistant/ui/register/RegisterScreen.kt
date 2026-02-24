@@ -25,7 +25,7 @@ fun RegisterScreen(
 
     LaunchedEffect(uiState.isRegistrationSuccessful) {
         if (uiState.isRegistrationSuccessful) {
-            Toast.makeText(context, "Konto utworzone! Zaloguj się.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Na podany email wysłano link aktywacyjny.", Toast.LENGTH_LONG).show()
             viewModel.onRegistrationSuccessHandled()
             onRegisterSuccess()
         }

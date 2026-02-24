@@ -43,6 +43,7 @@ class LoginViewModelTest {
 
     @Test
     fun loginShouldSetErrorWhenFirebaseFails() = runTest {
+        // 1. Arrange (Przygotowanie)
         viewModel.onEmailChange("test@test.pl")
         viewModel.onPasswordChange("wrong")
 
@@ -53,14 +54,15 @@ class LoginViewModelTest {
         val slot = slot<OnCompleteListener<AuthResult>>()
         every { mockTask.addOnCompleteListener(capture(slot)) } returns mockTask
 
+        // 2. Act (Działanie)
         viewModel.login()
-
         testDispatcher.scheduler.advanceUntilIdle()
 
         if (slot.isCaptured) {
             slot.captured.onComplete(mockTask)
         }
 
+        // 3. Assert (Weryfikacja)
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
         assertFalse(state.isLoginSuccessful)
