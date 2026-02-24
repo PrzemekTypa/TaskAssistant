@@ -122,23 +122,38 @@ class ChildDashboardViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                val tasksList = value?.documents?.mapNotNull { doc ->
-                    Task(
-                        id = doc.id,
-                        title = doc.getString("title") ?: "",
-                        points = doc.getLong("points")?.toInt() ?: 0,
-                        status = doc.getString("status") ?: "todo",
-                        assignedToId = doc.getString("assignedToId") ?: "",
-                        assignedToEmail = doc.getString("assignedToEmail") ?: ""
-                    )
-                } ?: emptyList()
+                var earnedPoints = 0
+                val visibleTasks = mutableListOf<Task>()
 
-                Log.d("FIREBASE_LOG", "Pobrano zadania: ${tasksList.size}")
+                value?.documents?.forEach { doc ->
+                    val status = doc.getString("status") ?: "todo"
+                    val points = doc.getLong("points")?.toInt() ?: 0
+                    val isArchived = doc.getBoolean("isArchived") == true
 
-                totalEarnedPoints = tasksList.filter { it.status == "approved" }.sumOf { it.points }
+                    if (status == "approved") {
+                        earnedPoints += points
+                    }
+
+                    if (!isArchived) {
+                        visibleTasks.add(
+                            Task(
+                                id = doc.id,
+                                title = doc.getString("title") ?: "",
+                                points = points,
+                                status = status,
+                                assignedToId = doc.getString("assignedToId") ?: "",
+                                assignedToEmail = doc.getString("assignedToEmail") ?: ""
+                            )
+                        )
+                    }
+                }
+
+                Log.d("FIREBASE_LOG", "Pobrano zadań widocznych: ${visibleTasks.size}, Punkty zarobione: $earnedPoints")
+
+                totalEarnedPoints = earnedPoints
 
                 recalculatePoints()
-                _uiState.update { it.copy(tasks = tasksList) }
+                _uiState.update { it.copy(tasks = visibleTasks) }
             }
     }
 

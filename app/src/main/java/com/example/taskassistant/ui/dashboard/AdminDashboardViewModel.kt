@@ -58,7 +58,9 @@ class AdminDashboardViewModel(
             .addSnapshotListener { value, error ->
                 if (error != null) return@addSnapshotListener
 
-                val tasks = value?.documents?.map { doc ->
+                val tasks = value?.documents?.mapNotNull { doc ->
+                    if (doc.getBoolean("isArchived") == true) return@mapNotNull null
+
                     Task(
                         id = doc.id,
                         title = doc.getString("title") ?: "",
@@ -294,12 +296,12 @@ class AdminDashboardViewModel(
 
     fun deleteTask(taskId: String) {
         db.collection("tasks").document(taskId)
-            .delete()
+            .update("isArchived", true)
             .addOnSuccessListener {
-                _uiState.update { it.copy(successMessage = "Zadanie zostało usunięte") }
+                _uiState.update { it.copy(successMessage = "Zadanie zarchiwizowane (ukryte)") }
             }
             .addOnFailureListener { e ->
-                _uiState.update { it.copy(error = "Błąd usuwania: ${e.message}") }
+                _uiState.update { it.copy(error = "Błąd ukrywania: ${e.message}") }
             }
     }
 
