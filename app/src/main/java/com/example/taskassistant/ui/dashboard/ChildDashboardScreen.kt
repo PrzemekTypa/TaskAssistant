@@ -36,6 +36,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.List
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.taskassistant.R
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -353,7 +356,14 @@ fun ChildSettingsTab(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         item {
-            Icon(androidx.compose.material.icons.Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "Logo aplikacji",
+                modifier = Modifier
+                    .size(220.dp)
+                    .padding(top = 24.dp)
+                    .padding(bottom = 8.dp)
+            )
             Spacer(modifier = Modifier.height(16.dp))
             Text(email, style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.height(24.dp))

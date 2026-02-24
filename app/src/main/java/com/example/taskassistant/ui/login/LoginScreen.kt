@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.taskassistant.ui.theme.TaskAssistantTheme
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.taskassistant.R
 
 @Composable
 fun LoginScreen(
@@ -58,20 +61,15 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Surface(
-                shape = RoundedCornerShape(40.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(110.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "Logo aplikacji",
+                modifier = Modifier
+                    .size(220.dp)
+                    .padding(top = 24.dp)
+                    .padding(bottom = 8.dp)
+
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
