@@ -212,6 +212,11 @@ class AdminDashboardViewModel(
     fun addTask(title: String, points: Int, assignedChildId: String, assignedChildEmail: String) {
         val currentUserId = auth.currentUser?.uid ?: return
 
+        if (points <= 0) {
+            _uiState.update { it.copy(error = "Liczba punktów musi być większa od zera!") }
+            return
+        }
+
         if (assignedChildId == "ALL") {
             val kids = _uiState.value.kidsList
             if (kids.isEmpty()) {
