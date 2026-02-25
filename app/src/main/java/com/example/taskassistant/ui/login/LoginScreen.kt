@@ -193,7 +193,7 @@ fun LoginScreen(
                     )
                 } else {
                     Text(
-                        text = "Wskakuję do środka!",
+                        text = "Zaloguj się",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -203,6 +203,46 @@ fun LoginScreen(
                         contentDescription = null
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            ) {
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.Gray.copy(alpha = 0.3f))
+                Text(
+                    text = "LUB",
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.Gray.copy(alpha = 0.3f))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = { /* TODO: Logowanie Google */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                shape = RoundedCornerShape(30.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.google_logo),
+                    contentDescription = "Ikona Google",
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Zaloguj przez Google",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
 
             Spacer(modifier = Modifier.weight(1f))
