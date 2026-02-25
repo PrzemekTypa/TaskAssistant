@@ -31,76 +31,81 @@ fun RegisterScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Icon(
-            imageVector = Icons.Outlined.PersonAdd,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Utwórz konto", style = MaterialTheme.typography.headlineMedium)
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        OutlinedTextField(
-            value = uiState.email,
-            onValueChange = { viewModel.onEmailChange(it) },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = uiState.password,
-            onValueChange = { viewModel.onPasswordChange(it) },
-            label = { Text("Hasło") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text("Kim jesteś?", style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            RoleRadioButton("Rodzic", "parent", uiState.selectedRole) { viewModel.onRoleChange(it) }
-            RoleRadioButton("Dziecko", "child", uiState.selectedRole) { viewModel.onRoleChange(it) }
-        }
+            Icon(
+                imageVector = Icons.Outlined.PersonAdd,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Utwórz konto", style = MaterialTheme.typography.headlineMedium)
 
-        if (uiState.error != null) {
+            Spacer(modifier = Modifier.height(32.dp))
+
+            OutlinedTextField(
+                value = uiState.email,
+                onValueChange = { viewModel.onEmailChange(it) },
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
-        }
+            OutlinedTextField(
+                value = uiState.password,
+                onValueChange = { viewModel.onPasswordChange(it) },
+                label = { Text("Hasło") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation()
+            )
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = { viewModel.register() },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !uiState.isLoading
-        ) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-            } else {
-                Text("Zarejestruj się")
+            Text("Kim jesteś?", style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                RoleRadioButton("Rodzic", "parent", uiState.selectedRole) { viewModel.onRoleChange(it) }
+                RoleRadioButton("Dziecko", "child", uiState.selectedRole) { viewModel.onRoleChange(it) }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = onBackToLogin) {
-            Text("Masz już konto? Zaloguj się")
+            if (uiState.error != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = { viewModel.register() },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading
+            ) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text("Zarejestruj się")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(onClick = onBackToLogin) {
+                Text("Masz już konto? Zaloguj się")
+            }
         }
     }
 }
