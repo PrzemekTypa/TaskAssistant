@@ -22,6 +22,12 @@ class TaskAssistantMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
+
+        val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users").document(userId).update("fcmToken", token)
+        }
     }
 
     private fun sendNotification(title: String, body: String) {

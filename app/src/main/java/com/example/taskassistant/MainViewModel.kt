@@ -3,6 +3,7 @@ package com.example.taskassistant
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +27,10 @@ class MainViewModel : ViewModel() {
     fun checkUserSession() {
         val user = auth.currentUser
         if (user != null) {
+            FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+                db.collection("users").document(user.uid).update("fcmToken", token)
+            }
+
             db.collection("users").document(user.uid).get()
                 .addOnSuccessListener { document ->
                     val role = document.getString("role")
