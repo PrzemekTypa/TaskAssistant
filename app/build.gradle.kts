@@ -86,4 +86,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.10")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 
+    //UI
+    implementation("nl.dionsegijn:konfetti-compose:2.0.4")
+
 }

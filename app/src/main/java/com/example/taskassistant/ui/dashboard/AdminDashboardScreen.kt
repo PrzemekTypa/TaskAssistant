@@ -246,12 +246,12 @@ fun RewardsTab(viewModel: AdminDashboardViewModel) {
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "❗ DO WYDANIA ❗",
+                            "DO WYDANIA",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
-                        Text("Dzieci czekają na te nagrody:")
+                        Text("Dzieci oczekują na akceptację:")
                     }
                 }
             }
