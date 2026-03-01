@@ -231,12 +231,14 @@ fun RewardsTab(viewModel: AdminDashboardViewModel) {
     var title by remember { mutableStateOf("") }
     var cost by remember { mutableStateOf("") }
 
+    val pendingRedemptions = uiState.redemptionsList.filter { it.status == "pending" }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         contentPadding = PaddingValues(bottom = 80.dp)
     ) {
-        if (uiState.redemptionsList.isNotEmpty()) {
+        if (pendingRedemptions.isNotEmpty()) {
             item {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
@@ -253,7 +255,7 @@ fun RewardsTab(viewModel: AdminDashboardViewModel) {
                     }
                 }
             }
-            items(uiState.redemptionsList) { purchase ->
+            items(pendingRedemptions) { purchase ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
@@ -301,11 +303,10 @@ fun RewardsTab(viewModel: AdminDashboardViewModel) {
                     )
                     Button(
                         onClick = {
-                            viewModel.addReward(title, cost.toIntOrNull() ?: 0); title = ""; cost =
-                            ""
+                            viewModel.addReward(title, cost.toIntOrNull() ?: 0); title = ""; cost = ""
                         },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        enabled = title.isNotBlank() && cost.isNotBlank()
+                        enabled = title.isNotBlank() && (cost.toIntOrNull() ?: 0) > 0
                     ) { Text("Dodaj") }
                 }
             }
