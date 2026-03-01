@@ -37,8 +37,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.List
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.ui.res.painterResource
 import com.example.taskassistant.R
+import nl.dionsegijn.konfetti.compose.KonfettiView
+import nl.dionsegijn.konfetti.compose.OnParticleSystemUpdateListener
+import nl.dionsegijn.konfetti.core.Party
+import nl.dionsegijn.konfetti.core.PartySystem
+import nl.dionsegijn.konfetti.core.Position
+import nl.dionsegijn.konfetti.core.emitter.Emitter
+import java.util.concurrent.TimeUnit
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,7 +101,7 @@ fun ChildDashboardScreen(
                         icon = {
                             when (title) {
                                 "Moje Zadania" -> Icon(Icons.Default.Home, contentDescription = null)
-                                "Nagrody" -> Icon(Icons.Default.Favorite, contentDescription = null)
+                                "Nagrody" -> Icon(Icons.Default.CardGiftcard, contentDescription = null)
                                 "Ustawienia" -> Icon(Icons.Default.Settings, contentDescription = null)
                             }
                         }
@@ -199,76 +207,102 @@ fun ChildTaskCard(
 fun ChildRewardsTab(viewModel: ChildDashboardViewModel) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp).fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
             ) {
-                Text("Dostępne środki", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "${uiState.userPoints} pkt",
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Column(
+                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Dostępne środki", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "${uiState.userPoints} pkt",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
-        }
 
-        Text("Sklepik z nagrodami:", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(16.dp))
+            Text("Sklepik z nagrodami:", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(16.dp))
 
-        if (uiState.rewards.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Rodzic nie dodał jeszcze nagród :(", color = Color.Gray)
-            }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(
-                    items = uiState.rewards,
-                    key = { it.id }
-                ) { reward ->
-                    val canAfford = uiState.userPoints >= reward.cost
+            if (uiState.rewards.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Rodzic nie dodał jeszcze nagród :(", color = Color.Gray)
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(
+                        items = uiState.rewards,
+                        key = { it.id }
+                    ) { reward ->
+                        val canAfford = uiState.userPoints >= reward.cost
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (canAfford) MaterialTheme.colorScheme.surface else Color.LightGray.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (canAfford) MaterialTheme.colorScheme.surface else Color.LightGray.copy(alpha = 0.3f)
+                            )
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(reward.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("${reward.cost}", fontWeight = FontWeight.Bold)
-                                }
-                            }
-
-                            Button(
-                                onClick = { viewModel.redeemReward(reward) },
-                                enabled = canAfford,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (canAfford) MaterialTheme.colorScheme.primary else Color.Gray
-                                )
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(if (canAfford) "Kup" else "Brakuje")
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(reward.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("${reward.cost}", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                Button(
+                                    onClick = { viewModel.redeemReward(reward) },
+                                    enabled = canAfford,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (canAfford) MaterialTheme.colorScheme.primary else Color.Gray
+                                    )
+                                ) {
+                                    Text(if (canAfford) "Kup" else "Brakuje")
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+
+        if (uiState.showConfetti) {
+            KonfettiView(
+                modifier = Modifier.fillMaxSize(),
+                parties = listOf(
+                    Party(
+                        speed = 0f,
+                        maxSpeed = 30f,
+                        damping = 0.9f,
+                        spread = 360,
+                        colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
+                        emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
+                        position = Position.Relative(0.5, 0.2)
+                    )
+                ),
+                updateListener = object : OnParticleSystemUpdateListener {
+                    override fun onParticleSystemEnded(system: PartySystem, activeSystems: Int) {
+                        if (activeSystems == 0) {
+                            viewModel.onConfettiFinished()
+                        }
+                    }
+                }
+            )
         }
     }
 }

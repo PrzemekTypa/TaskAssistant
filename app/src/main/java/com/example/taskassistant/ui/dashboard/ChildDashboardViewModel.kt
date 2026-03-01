@@ -21,7 +21,8 @@ data class ChildUiState(
     val error: String? = null,
     val userPoints: Int = 0,
     val successMessage: String? = null,
-    val pendingParentId: String? = null
+    val pendingParentId: String? = null,
+    val showConfetti: Boolean = false
 )
 
 class ChildDashboardViewModel : ViewModel() {
@@ -286,7 +287,9 @@ class ChildDashboardViewModel : ViewModel() {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        successMessage = "🎉 Nagroda zarezerwowana! Czekaj na dostawę!"
+                        successMessage = "Nagroda zarezerwowana! Czekaj na dostawę!",
+                        showConfetti = true
+
                     )
                 }
                 sendNotificationToParentRedemption(reward.title)
@@ -340,5 +343,9 @@ class ChildDashboardViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         stopListening()
+    }
+
+    fun onConfettiFinished() {
+        _uiState.update { it.copy(showConfetti = false) }
     }
 }
