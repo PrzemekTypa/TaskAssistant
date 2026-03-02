@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.example.taskassistant.R
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +47,7 @@ fun AdminDashboardScreen(
     onLogout: () -> Unit,
     viewModel: AdminDashboardViewModel = viewModel()
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showAddTaskDialog by remember { mutableStateOf(false) }
     val tabs = listOf("Zadania", "Dzieci", "Nagrody", "Ustawienia")
 
