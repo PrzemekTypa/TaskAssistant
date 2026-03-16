@@ -1,7 +1,5 @@
 <a name="readme-top"></a>
 
-[![overview](https://img.shields.io/badge/TaskAssistant-overview-green.svg)](/README-overview.md)
-
 <br />
 <div align="center">
   <a href="https://github.com/TwojaNazwaUzytkownika/TaskAssistant">
@@ -71,7 +69,7 @@ Możesz pobrać i zainstalować plik APK (ta wersja jest już podłączona do te
 
 1.  **Przejdź do strony "Releases":**
     * Kliknij tutaj, aby pobrać najnowszą wersję:
-    * **[https://github.com/TwojaNazwaUzytkownika/TaskAssistant/releases/latest](https://github.com/TwojaNazwaUzytkownika/TaskAssistant/releases/latest)**
+    * **[https://github.com/PrzemekTypa/TaskAssistant/releases](https://github.com/TwojaNazwaUzytkownika/TaskAssistant/releases/latest)**
 
 2.  **Pobierz APK:**
     * W sekcji "Assets" pobierz plik **`TaskAssistant_v.1.0.apk`** bezpośrednio na swój telefon.
