@@ -48,6 +48,22 @@ Aplikacja opiera się na systemie ról: **Rodzic (Admin)** oraz **Dziecko**.
 - Oparta na nowoczesnej architekturze: MVVM, Jetpack Compose, Kotlin Coroutines, StateFlow.
 
 ---
+## Technologie i Narzędzia
+
+Aplikacja została zbudowana w oparciu o nowoczesny stos technologiczny rekomendowany przez Google dla systemu Android:
+
+* **Język:** Kotlin
+* **Interfejs Użytkownika:** Jetpack Compose, Material Design 3
+* **Architektura:** MVVM (Model-View-ViewModel)
+* **Asynchroniczność:** Kotlin Coroutines, StateFlow
+* **Aparat:** CameraX (natywna obsługa robienia zdjęć z poziomu aplikacji)
+* **Backend (BaaS - Firebase):**
+    * **Authentication:** Logowanie (E-mail/Hasło) oraz Google Sign-In
+    * **Cloud Firestore:** Baza danych NoSQL w czasie rzeczywistym
+    * **Cloud Storage:** Przechowywanie zdjęć (dowodów wykonania zadań)
+    * **Cloud Messaging (FCM):** Powiadomienia Push
+
+---
 
 ## Zdalna instalacja pliku APK
 
