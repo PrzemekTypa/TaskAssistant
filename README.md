@@ -1,37 +1,64 @@
-# Task Assistant
+<a name="readme-top"></a>
 
-> An Android mobile application to help motivate children and teenagers to complete chores through a point-based reward system and full parental control.
+[![overview](https://img.shields.io/badge/TaskAssistant-overview-green.svg)](/README-overview.md)
 
-Task Assistant is an application designed for families who want to introduce healthy habits and rules. Children earn points for completing daily chores (e.g., cleaning, homework) and can then exchange them for rewards (e.g., console gaming time).
+<br />
+<div align="center">
+  <a href="https://github.com/TwojaNazwaUzytkownika/TaskAssistant">
+    <img src="app\src\main\res\drawable\app_logo.png" alt="Logo" width="80" height="80">
+  </a>
 
-The parent acts as an administrator—creating tasks, approving their completion, awarding points, and managing the list of available rewards.
+<h3 align="center">TaskAssistant</h3>
+
+  <p align="center">
+    TaskAssistant to aplikacja mobilna na system Android napisana w Kotlinie (Jetpack Compose), która pomaga rodzinom w zarządzaniu obowiązkami domowymi i systemem nagród.
+    <br />
+    <br />
+  </p>
+</div>
+
+![Zrzut ekranu](images/taskAssistantMobile.png)
+
+## Wymagania i funkcjonalności (Features)
+
+Aplikacja opiera się na systemie ról: **Rodzic (Admin)** oraz **Dziecko**.
+
+### Autoryzacja i konta:
+- Użytkownik może założyć konto z wyborem roli (Rodzic lub Dziecko).
+- Użytkownik może logować się za pomocą adresu e-mail i hasła.
+- Użytkownik może logować się za pomocą konta Google.
+- System zaproszeń: Dziecko może zostać przypisane do konta Rodzica.
+
+### Panel Rodzica (Admin Dashboard):
+- Rodzic może dodawać nowe zadania (tytuł, punktacja).
+- Rodzic może przypisać zadanie do konkretnego dziecka lub do wszystkich dzieci.
+- Rodzic może weryfikować zadania wykonane przez dzieci (podgląd zdjęcia przesłanego jako dowód).
+- Rodzic może tworzyć katalog nagród z określoną ceną punktową.
+- Rodzic akceptuje prośby dzieci o odebranie nagrody (wydanie nagrody).
+
+### Panel Dziecka (Child Dashboard):
+- Dziecko ma podgląd do listy swoich aktualnych zadań.
+- Dziecko może oznaczyć zadanie jako wykonane, robiąc zdjęcie dowodowe bezpośrednio w aplikacji (wbudowany aparat).
+- Dziecko zbiera punkty za zatwierdzone zadania.
+- Dziecko może wymieniać zebrane punkty na nagrody z katalogu.
+- Dziecko ma wgląd w swoją historię transakcji i punktów.
+
+### Dodatkowe:
+- Aplikacja obsługuje powiadomienia Push (Firebase Cloud Messaging) - np. o nowych zadaniach lub akceptacji nagrody.
+- Oparta na nowoczesnej architekturze: MVVM, Jetpack Compose, Kotlin Coroutines, StateFlow.
 
 ---
 
-##  Core Features
+## Zdalna instalacja pliku APK
 
-The project is based on two main user panels with different permissions.
+Możesz pobrać i zainstalować plik APK (ta wersja jest już podłączona do testowej bazy Firebase).
 
-###  Parent Panel (Admin)
-* **Family Management:** Add and view child profiles.
-* **Task Creation:** Define tasks and assign point values (e.g., "Clean room" - 100 pts).
-* **Reward Creation:** Define rewards and their "price" (e.g., "1 hour of gaming" - 500 pts).
-* **Verification:** A panel to approve or reject tasks submitted by children (including a proof preview, e.g., a photo).
+1.  **Przejdź do strony "Releases":**
+    * Kliknij tutaj, aby pobrać najnowszą wersję:
+    * **[https://github.com/TwojaNazwaUzytkownika/TaskAssistant/releases/latest](https://github.com/TwojaNazwaUzytkownika/TaskAssistant/releases/latest)**
 
-###  Child Panel (User)
-* **Task List:** View the list of available tasks to complete.
-* **Task Submission:** Mark tasks as "done" and submit proof (e.g., a photo) for parental approval.
-* **Task Status:** Track the status of submitted tasks (Pending, Approved, Rejected).
-* **Reward Shop:** Browse available rewards and "purchase" them with earned points.
+2.  **Pobierz APK:**
+    * W sekcji "Assets" pobierz plik **`TaskAssistant_v.1.0.apk`** bezpośrednio na swój telefon.
 
----
-
-##  Technology Stack
-
-This application is built using the modern, Google-recommended technology stack for Android development.
-
-* **Language:** Kotlin
-* **UI Toolkit:** Jetpack Compose
-* **Backend & Database:** Firebase (Authentication, Firestore, Storage)
-* **Architecture:** MVVM (Model-View-ViewModel)
-
+3.  **Zainstaluj APK:**
+    * Na swoim urządzeniu z Androidem upewnij się, że masz włączoną opcję instalowania aplikacji z "Nieznanych źródeł" w ustawieniach zabezpieczeń. Następnie otwórz plik i zainstaluj aplikację.
